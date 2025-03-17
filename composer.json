@@ -1,0 +1,64 @@
+{
+    "name": "citricguy/twilio-laravel",
+    "description": "A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and webhooks. This package leverages the official Twilio PHP SDK and adheres to Laravel conventions, providing a seamless, queued, and event-driven solution for sending messages and processing incoming Twilio callbacks. Ideal for modern Laravel projects needing robust Twilio integration.",
+    "keywords": ["laravel", "twilio", "sms", "mms"],
+    "homepage": "https://github.com/citricguy/twilio-laravel",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Josh Sommers",
+            "email": "citricguy@gmail.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/citricguy/twilio-laravel/issues",
+        "source": "https://github.com/citricguy/twilio-laravel"
+    },
+    "require": {
+        "php": "^8.3|^8.4",
+        "illuminate/contracts": "^11.0||^12.0",
+        "illuminate/support": "^11.0||^12.0",
+        "twilio/sdk": "^8.4"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.14",
+        "nunomaduro/collision": "^8.1.1",
+        "orchestra/testbench": "^10.0||^11.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-arch": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Citricguy\\TwilioLaravel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Citricguy\\TwilioLaravel\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Citricguy\\TwilioLaravel\\TwilioLaravelServiceProvider"
+            ],
+            "aliases": {
+                "Twilio": "Citricguy\\TwilioLaravel\\Facades\\Twilio"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
