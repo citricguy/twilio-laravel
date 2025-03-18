@@ -60,6 +60,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Webhook Path
+    |--------------------------------------------------------------------------
+    |
+    | This is the URL path where Twilio webhooks will be received.
+    | For example: 'webhooks/twilio' would be accessed at yourdomain.com/webhooks/twilio
+    |
+    */
+    'webhook_path' => env('TWILIO_WEBHOOK_PATH', 'webhooks/twilio'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Debug Mode
     |--------------------------------------------------------------------------
     |

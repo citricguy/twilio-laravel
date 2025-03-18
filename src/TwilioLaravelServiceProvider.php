@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Citricguy\TwilioLaravel\Http\Middleware\VerifyTwilioWebhook;
 use Citricguy\TwilioLaravel\Http\Controllers\TwilioLaravelWebhookController;
+use Citricguy\TwilioLaravel\Console\VerifyWebhookSetupCommand;
 
 class TwilioLaravelServiceProvider extends ServiceProvider
 {
@@ -18,6 +19,11 @@ class TwilioLaravelServiceProvider extends ServiceProvider
             __DIR__.'/../config/twilio-laravel.php' => config_path('twilio-laravel.php'),
         ], 'config');
 
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                VerifyWebhookSetupCommand::class,
+            ]);
+        }
     }
 
     public function register()
