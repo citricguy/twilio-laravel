@@ -12,7 +12,9 @@ it('correctly identifies SMS webhook type', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
     
-    $response = $this->postJson('/webhooks/twilio', [
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
+    $response = $this->postJson($webhookPath, [
         'MessageSid' => 'SM123456',
         'From' => '+12345678901',
         'Body' => 'Test message'
@@ -29,7 +31,9 @@ it('correctly identifies voice webhook type', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
     
-    $response = $this->postJson('/webhooks/twilio', [
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
+    $response = $this->postJson($webhookPath, [
         'CallSid' => 'CA123456',
         'From' => '+12345678901',
         'CallStatus' => 'in-progress'
@@ -46,7 +50,9 @@ it('handles empty payloads gracefully', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
     
-    $response = $this->postJson('/webhooks/twilio', []);
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
+    $response = $this->postJson($webhookPath, []);
     
     $response->assertStatus(202);
     
@@ -59,7 +65,9 @@ it('processes webhooks with complex nested payloads', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
     
-    $response = $this->postJson('/webhooks/twilio', [
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
+    $response = $this->postJson($webhookPath, [
         'MessageSid' => 'SM123456',
         'From' => '+12345678901',
         'To' => '+19876543210',

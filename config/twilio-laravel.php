@@ -67,7 +67,7 @@ return [
     | For example: 'webhooks/twilio' would be accessed at yourdomain.com/webhooks/twilio
     |
     */
-    'webhook_path' => env('TWILIO_WEBHOOK_PATH', 'webhooks/twilio'),
+    'webhook_path' => env('TWILIO_WEBHOOK_PATH', '/api/twilio/webhook'),
 
     /*
     |--------------------------------------------------------------------------

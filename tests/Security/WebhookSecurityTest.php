@@ -18,8 +18,11 @@ it('rejects requests with missing signature header', function () {
     config(['twilio-laravel.validate_webhook' => true]);
     config(['twilio-laravel.auth_token' => 'test_auth_token']);
     
+    // Get webhook path from config
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
     // Post without the signature header
-    $response = $this->postJson('/webhooks/twilio', [
+    $response = $this->postJson($webhookPath, [
         'MessageSid' => 'SM123456',
         'From' => '+12345678901',
     ]);
@@ -34,10 +37,13 @@ it('rejects requests with invalid signature', function () {
     config(['twilio-laravel.validate_webhook' => true]);
     config(['twilio-laravel.auth_token' => 'test_auth_token']);
     
+    // Get webhook path from config
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
     // Post with invalid signature
     $response = $this->withHeaders([
         'X-Twilio-Signature' => 'invalid_signature_here'
-    ])->postJson('/webhooks/twilio', [
+    ])->postJson($webhookPath, [
         'MessageSid' => 'SM123456',
     ]);
     
@@ -51,18 +57,21 @@ it('rejects replay attacks with modified payload', function () {
     config(['twilio-laravel.validate_webhook' => true]);
     config(['twilio-laravel.auth_token' => 'test_auth_token']);
     
-    $url = 'http://localhost/webhooks/twilio';
+    // Get webhook path from config
+    $webhookPath = config('twilio-laravel.webhook_path');
+    $fullUrl = 'http://localhost' . $webhookPath;
+    
     $originalParams = ['MessageSid' => 'SM123456', 'Body' => 'Original message'];
     
     // Generate valid signature for original params
-    $validSignature = WebhookSignatureHelper::generateValidSignature($url, $originalParams, 'test_auth_token');
+    $validSignature = WebhookSignatureHelper::generateValidSignature($fullUrl, $originalParams, 'test_auth_token');
     
     // Try to use the same signature with modified payload (simulating a replay attack)
     $modifiedParams = ['MessageSid' => 'SM123456', 'Body' => 'Modified message'];
     
     $response = $this->withHeaders([
         'X-Twilio-Signature' => $validSignature
-    ])->postJson('/webhooks/twilio', $modifiedParams);
+    ])->postJson($webhookPath, $modifiedParams);
     
     // Signature should be invalid because payload changed
     $response->assertStatus(403);
@@ -76,8 +85,10 @@ it('rejects requests with manipulated urls', function () {
     // Instead of trying to mock URL changes in the test environment,
     // we'll test the middleware directly with a controlled request
     
-    // Original URL that the signature was generated for
-    $originalUrl = 'https://original-domain.com/webhooks/twilio';
+    // Get webhook path from config and create URLs
+    $webhookPath = config('twilio-laravel.webhook_path');
+    $originalUrl = 'https://original-domain.com' . $webhookPath;
+    
     $params = ['MessageSid' => 'SM123456'];
     
     // Generate valid signature for the original URL
@@ -90,7 +101,7 @@ it('rejects requests with manipulated urls', function () {
     $request->shouldReceive('header')->with('X-Twilio-Signature')->andReturn($validSignature);
     
     // This is the key part - fullUrl() returns a different URL than what was used to generate the signature
-    $request->shouldReceive('fullUrl')->andReturn('https://manipulated-domain.com/webhooks/twilio');
+    $request->shouldReceive('fullUrl')->andReturn('https://manipulated-domain.com' . $webhookPath);
     
     // Create the middleware
     $middleware = new VerifyTwilioWebhook();
@@ -113,8 +124,11 @@ it('escapes output in webhook responses', function () {
     // Check that responses don't include unescaped data that could lead to XSS
     config(['twilio-laravel.validate_webhook' => false]);
     
+    // Get webhook path from config
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
     // Send webhook with potentially malicious payload
-    $response = $this->postJson('/webhooks/twilio', [
+    $response = $this->postJson($webhookPath, [
         'MessageSid' => '<script>alert("XSS")</script>',
         'From' => '+12345678901'
     ]);
@@ -135,9 +149,12 @@ it('handles server errors gracefully', function () {
     config(['twilio-laravel.validate_webhook' => true]);
     config(['twilio-laravel.auth_token' => null]); // should cause a 500 error
     
+    // Get webhook path from config
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
     $response = $this->withHeaders([
         'X-Twilio-Signature' => 'some-signature'
-    ])->postJson('/webhooks/twilio', [
+    ])->postJson($webhookPath, [
         'MessageSid' => 'SM123456'
     ]);
     
@@ -152,7 +169,10 @@ it('handles server errors gracefully', function () {
 
 it('has route properly defined with middleware', function () {
     // Verify the webhook route is correctly defined with security middleware
-    $webhookPath = config('twilio-laravel.webhook_path', 'webhooks/twilio');
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
+    // Remove leading slash if present as Laravel routes are stored without it
+    $webhookPath = ltrim($webhookPath, '/');
     
     $routes = collect(Route::getRoutes())->map(function ($route) {
         return [

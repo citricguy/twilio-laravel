@@ -14,8 +14,11 @@ it('receives webhooks when validation is disabled', function () {
     // Mock event dispatcher
     Event::fake();
     
+    // Get webhook path from config
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
     // Send a test webhook
-    $response = $this->postJson('/webhooks/twilio', [
+    $response = $this->postJson($webhookPath, [
         'MessageSid' => 'SM123456',
         'From' => '+12345678901',
         'To' => '+19876543210',
