@@ -35,7 +35,7 @@ Add the following environment variables to your `.env` file:
 TWILIO_SID=your-twilio-account-sid
 TWILIO_TOKEN=your-twilio-auth-token
 TWILIO_FROM=+1234567890
-TWILIO_WEBHOOK_PATH=webhooks/twilio
+TWILIO_WEBHOOK_PATH=/api/twilio/webhook
 ```
 
 ## Usage
@@ -54,7 +54,7 @@ The package includes a webhook handler that automatically validates incoming req
 2. Navigate to your phone number settings
 3. Under "Messaging" or "Voice", set the webhook URL to:
    ```
-   https://your-app-url.com/webhooks/twilio
+   https://your-app-url.com/api/twilio/webhook
    ```
    (or whatever path you've configured in `TWILIO_WEBHOOK_PATH`)
 
@@ -117,6 +117,58 @@ TWILIO_VALIDATE_WEBHOOK=false
 
 This is not recommended for production.
 
+## Webhook Configuration
+
+This package provides a route for receiving and processing Twilio webhooks. By default, the webhook endpoint is configured at `/api/twilio/webhook`, but you can customize this in your configuration.
+
+### Customizing the Webhook Path
+
+You can customize the webhook path by setting the `TWILIO_WEBHOOK_PATH` environment variable in your `.env` file:
+
+```
+TWILIO_WEBHOOK_PATH=/your/custom/webhook/path
+```
+
+Alternatively, you can publish the configuration file and modify the `webhook_path` setting directly:
+
+```php
+'webhook_path' => env('TWILIO_WEBHOOK_PATH', '/api/twilio/webhook'),
+```
+
+### Setting Up Twilio to Use Your Webhook
+
+1. Go to the Twilio Console
+2. Navigate to your phone number settings
+3. In the "Messaging" section, set the webhook URL to your application's URL plus the webhook path:
+   ```
+   https://your-app-domain.com/api/twilio/webhook
+   ```
+   (Or your custom path if you've changed it)
+4. Select "HTTP POST" as the request method
+5. Save your changes
+
+### Webhook Security
+
+All webhooks are automatically validated using Twilio's signature validation process when `TWILIO_VALIDATE_WEBHOOK` is set to `true` (the default). This ensures that requests are genuinely coming from Twilio and haven't been tampered with.
+
+You can disable validation in development environments by setting:
+
+```
+TWILIO_VALIDATE_WEBHOOK=false
+```
+
+### Testing Webhooks
+
+When writing tests that interact with the webhook endpoint, make sure to use the configured path from the config:
+
+```php
+// In your tests
+$webhookPath = config('twilio-laravel.webhook_path');
+$response = $this->postJson($webhookPath, [...]);
+```
+
+This ensures your tests will continue to work even if you change the webhook path configuration.
+
 ## Verification Tools
 
 The package includes a helpful command to verify your webhook setup:
@@ -142,7 +194,7 @@ use Citricguy\TwilioLaravel\Helpers\WebhookSignatureHelper;
 
 // Generate a signature for testing
 $signature = WebhookSignatureHelper::generateValidSignature(
-    'https://your-url.com/webhooks/twilio',
+    'https://your-url.com/api/twilio/webhook',
     ['MessageSid' => 'SM123456'],
     'your-auth-token'
 );
@@ -150,7 +202,7 @@ $signature = WebhookSignatureHelper::generateValidSignature(
 // Verify a signature
 $isValid = WebhookSignatureHelper::isValidSignature(
     $signatureFromHeader,
-    'https://your-url.com/webhooks/twilio',
+    'https://your-url.com/api/twilio/webhook',
     $requestParams,
     'your-auth-token'
 );
