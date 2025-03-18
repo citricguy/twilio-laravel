@@ -47,33 +47,33 @@ The `TWILIO_DEBUG` environment variable can be used to enable or disable debug m
 
 ### Sending SMS Messages
 
-You can send SMS messages using the `TwilioSms` facade:
+You can send SMS messages using the `Twilio` facade:
 
 ```php
-use Citricguy\TwilioLaravel\Facades\TwilioSms;
+use Citricguy\TwilioLaravel\Facades\Twilio;
 
 // Basic usage
-TwilioSms::sendMessage('+1234567890', 'Hello from Twilio Laravel!');
+Twilio::sendMessage('+1234567890', 'Hello from Twilio Laravel!');
 
 // With custom from number
-TwilioSms::sendMessage(
+Twilio::sendMessage(
     '+1234567890',
     'Hello from a different number!',
     ['from' => '+1987654321']
 );
 
 // Send immediately (bypass queue)
-TwilioSms::sendMessageNow('+1234567890', 'This is urgent!');
+Twilio::sendMessageNow('+1234567890', 'This is urgent!');
 
 // Send MMS with media
-TwilioSms::sendMessage(
+Twilio::sendMessage(
     '+1234567890',
     'Check out this image!',
     ['mediaUrls' => ['https://example.com/image.jpg']]
 );
 
 // Custom queue options
-TwilioSms::sendMessage(
+Twilio::sendMessage(
     '+1234567890',
     'Hello from a custom queue!',
     [
