@@ -2,11 +2,10 @@
 
 namespace Citricguy\TwilioLaravel\Tests;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Facade;
-use Orchestra\Testbench\TestCase as Orchestra;
 use Citricguy\TwilioLaravel\TwilioLaravelServiceProvider;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Http;
+use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {

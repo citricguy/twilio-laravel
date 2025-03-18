@@ -12,7 +12,7 @@ return [
     |
     */
     'account_sid' => env('TWILIO_SID', 'your-twilio-sid'),
-    'auth_token'  => env('TWILIO_TOKEN', 'your-twilio-auth-token'),
+    'auth_token' => env('TWILIO_TOKEN', 'your-twilio-auth-token'),
 
     /*
     |--------------------------------------------------------------------------
@@ -23,7 +23,7 @@ return [
     | You can override it on a per-message basis if needed.
     |
     */
-    'from'  => env('TWILIO_FROM', '+1234567890'),
+    'from' => env('TWILIO_FROM', '+1234567890'),
 
     /*
     |--------------------------------------------------------------------------

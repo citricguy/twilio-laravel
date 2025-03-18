@@ -2,8 +2,8 @@
 
 namespace Citricguy\TwilioLaravel\Tests\Feature;
 
-use Illuminate\Support\Facades\Event;
 use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
+use Illuminate\Support\Facades\Event;
 
 /**
  * Tests for different webhook payload types and formats
@@ -11,17 +11,17 @@ use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
 it('correctly identifies SMS webhook type', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
-    
+
     $webhookPath = config('twilio-laravel.webhook_path');
-    
+
     $response = $this->postJson($webhookPath, [
         'MessageSid' => 'SM123456',
         'From' => '+12345678901',
-        'Body' => 'Test message'
+        'Body' => 'Test message',
     ]);
-    
+
     $response->assertStatus(202);
-    
+
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
         return $event->type === 'message';
     });
@@ -30,17 +30,17 @@ it('correctly identifies SMS webhook type', function () {
 it('correctly identifies voice webhook type', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
-    
+
     $webhookPath = config('twilio-laravel.webhook_path');
-    
+
     $response = $this->postJson($webhookPath, [
         'CallSid' => 'CA123456',
         'From' => '+12345678901',
-        'CallStatus' => 'in-progress'
+        'CallStatus' => 'in-progress',
     ]);
-    
+
     $response->assertStatus(202);
-    
+
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
         return $event->type === 'voice';
     });
@@ -49,13 +49,13 @@ it('correctly identifies voice webhook type', function () {
 it('handles empty payloads gracefully', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
-    
+
     $webhookPath = config('twilio-laravel.webhook_path');
-    
+
     $response = $this->postJson($webhookPath, []);
-    
+
     $response->assertStatus(202);
-    
+
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
         return $event->type === null && empty($event->payload);
     });
@@ -64,9 +64,9 @@ it('handles empty payloads gracefully', function () {
 it('processes webhooks with complex nested payloads', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
-    
+
     $webhookPath = config('twilio-laravel.webhook_path');
-    
+
     $response = $this->postJson($webhookPath, [
         'MessageSid' => 'SM123456',
         'From' => '+12345678901',
@@ -77,14 +77,14 @@ it('processes webhooks with complex nested payloads', function () {
         'MediaUrl0' => 'https://example.com/image.jpg',
         'extra' => [
             'nested' => 'value',
-            'items' => [1, 2, 3]
-        ]
+            'items' => [1, 2, 3],
+        ],
     ]);
-    
+
     $response->assertStatus(202);
-    
+
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
-        return $event->payload['NumMedia'] === '1' && 
+        return $event->payload['NumMedia'] === '1' &&
                isset($event->payload['extra']['nested']);
     });
 });

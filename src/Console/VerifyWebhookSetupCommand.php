@@ -3,7 +3,6 @@
 namespace Citricguy\TwilioLaravel\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 
 class VerifyWebhookSetupCommand extends Command
@@ -49,9 +48,9 @@ class VerifyWebhookSetupCommand extends Command
 
         // Validate full URL
         $baseUrl = $this->option('url') ?: URL::to('/');
-        $fullUrl = rtrim($baseUrl, '/') . '/' . ltrim($webhookPath, '/');
+        $fullUrl = rtrim($baseUrl, '/').'/'.ltrim($webhookPath, '/');
         $this->info("📌 Your full webhook URL should be: $fullUrl");
-        
+
         // Check validation setting
         $validationEnabled = config('twilio-laravel.validate_webhook');
         if ($validationEnabled) {
@@ -62,7 +61,7 @@ class VerifyWebhookSetupCommand extends Command
 
         $this->newLine();
         $this->info('To verify in production:');
-        $this->line('1. Set up this URL in your Twilio console: ' . $fullUrl);
+        $this->line('1. Set up this URL in your Twilio console: '.$fullUrl);
         $this->line('2. Send a test message through Twilio to trigger a webhook');
         $this->line('3. Check your Laravel logs to ensure signatures are validating properly');
     }

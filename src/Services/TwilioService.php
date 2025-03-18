@@ -33,9 +33,6 @@ class TwilioService
     /**
      * Send an SMS message.
      *
-     * @param string $to
-     * @param string $message
-     * @param array $options
      * @return mixed
      */
     public function sendMessage(string $to, string $message, array $options = [])
@@ -51,9 +48,6 @@ class TwilioService
     /**
      * Send an SMS message immediately.
      *
-     * @param string $to
-     * @param string $message
-     * @param array $options
      * @return mixed
      */
     public function sendMessageNow(string $to, string $message, array $options = [])
@@ -74,7 +68,7 @@ class TwilioService
             }
 
             // Add media URLs if provided
-            if (!empty($options['mediaUrls'])) {
+            if (! empty($options['mediaUrls'])) {
                 $messageData['mediaUrl'] = $options['mediaUrls'];
             }
 
@@ -104,7 +98,7 @@ class TwilioService
             if (config('twilio-laravel.debug', false)) {
                 Log::error('Twilio: Failed to send message', [
                     'error' => $e->getMessage(),
-                    'to' => $to
+                    'to' => $to,
                 ]);
             }
             throw $e;
@@ -114,9 +108,6 @@ class TwilioService
     /**
      * Queue an SMS message for sending.
      *
-     * @param string $to
-     * @param string $message
-     * @param array $options
      * @return array
      */
     public function queueMessage(string $to, string $message, array $options = [])

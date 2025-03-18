@@ -37,7 +37,7 @@ class TwilioMessageSent
      * @var string
      */
     public $status;
-    
+
     /**
      * The number of message segments.
      *
@@ -55,12 +55,6 @@ class TwilioMessageSent
     /**
      * Create a new event instance.
      *
-     * @param string $messageSid
-     * @param string $to
-     * @param string $message
-     * @param string $status
-     * @param int $segmentsCount
-     * @param array $options
      * @return void
      */
     public function __construct(

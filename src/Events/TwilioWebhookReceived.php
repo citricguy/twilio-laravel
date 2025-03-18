@@ -2,9 +2,9 @@
 
 namespace Citricguy\TwilioLaravel\Events;
 
+use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Broadcasting\InteractsWithSockets;
 
 class TwilioWebhookReceived
 {
@@ -27,8 +27,6 @@ class TwilioWebhookReceived
     /**
      * Create a new event instance.
      *
-     * @param array $payload
-     * @param string|null $type
      * @return void
      */
     public function __construct(array $payload, ?string $type = null)
@@ -39,16 +37,13 @@ class TwilioWebhookReceived
 
     /**
      * Attempt to determine the webhook type from payload.
-     *
-     * @param array $payload
-     * @return string|null
      */
     protected function determineType(array $payload): ?string
     {
         if (isset($payload['MessageSid'])) {
             return 'message';
         }
-        
+
         if (isset($payload['CallSid'])) {
             return 'voice';
         }

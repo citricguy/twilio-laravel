@@ -37,9 +37,6 @@ class SendTwilioMessage implements ShouldQueue
     /**
      * Create a new job instance.
      *
-     * @param string $to
-     * @param string $message
-     * @param array $options
      * @return void
      */
     public function __construct(string $to, string $message, array $options = [])
@@ -52,7 +49,6 @@ class SendTwilioMessage implements ShouldQueue
     /**
      * Execute the job.
      *
-     * @param TwilioService $twilioService
      * @return void
      */
     public function handle(TwilioService $twilioService)
