@@ -8,5 +8,8 @@
         <testsuite name="Twilio Laravel Test Suite">
             <directory>tests</directory>
         </testsuite>
+        <testsuite name="Security Tests">
+            <directory>tests/Security</directory>
+        </testsuite>
     </testsuites>
 </phpunit>
