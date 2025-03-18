@@ -1,8 +1,13 @@
 # Twilio Laravel
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/citricguy/twilio-laravel.svg?style=flat-square)](https://packagist.org/packages/citricguy/twilio-laravel)
-[![Total Downloads](https://img.shields.io/packagist/dt/citricguy/twilio-laravel.svg?style=flat-square)](https://packagist.org/packages/citricguy/twilio-laravel)
-![GitHub Actions](https://github.com/citricguy/twilio-laravel/actions/workflows/main.yml/badge.svg)
+<p align="center">
+  <a href="https://packagist.org/packages/citricguy/twilio-laravel" target="_blank">
+    <img src="https://img.shields.io/packagist/v/citricguy/twilio-laravel.svg?style=flat-square" alt="Latest Version on Packagist">
+  </a>
+  <a href="https://packagist.org/packages/citricguy/twilio-laravel" target="_blank">
+    <img src="https://img.shields.io/packagist/dt/citricguy/twilio-laravel.svg?style=flat-square" alt="Total Downloads">
+  </a>
+</p>
 
 A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and webhooks. This package leverages the official Twilio PHP SDK and adheres to Laravel conventions, providing a seamless, queued, and event-driven solution for sending messages and processing incoming Twilio callbacks.
 
@@ -45,7 +50,7 @@ The package includes a webhook handler that automatically validates incoming req
 
 #### Configuring Webhooks in Twilio
 
-1. Log into your [Twilio Console](https://www.twilio.com/console)
+1. Log into your <a href="https://www.twilio.com/console" target="_blank">Twilio Console</a>
 2. Navigate to your phone number settings
 3. Under "Messaging" or "Voice", set the webhook URL to:
    ```
@@ -173,8 +178,8 @@ If you discover any security-related issues, please email citricguy@gmail.com in
 
 ## Credits
 
-- [Josh Sommers](https://github.com/citricguy)
-- [All Contributors](../../contributors)
+- <a href="https://github.com/citricguy" target="_blank">Josh Sommers</a>
+- <a href="../../contributors" target="_blank">All Contributors</a>
 
 ## License
 
