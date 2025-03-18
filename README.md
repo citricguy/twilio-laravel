@@ -47,7 +47,55 @@ The `TWILIO_DEBUG` environment variable can be used to enable or disable debug m
 
 ### Sending SMS Messages
 
-Coming soon...
+You can send SMS messages using the `TwilioSms` facade:
+
+```php
+use Citricguy\TwilioLaravel\Facades\TwilioSms;
+
+// Basic usage
+TwilioSms::sendMessage('+1234567890', 'Hello from Twilio Laravel!');
+
+// With custom from number
+TwilioSms::sendMessage(
+    '+1234567890',
+    'Hello from a different number!',
+    ['from' => '+1987654321']
+);
+
+// Send immediately (bypass queue)
+TwilioSms::sendMessageNow('+1234567890', 'This is urgent!');
+
+// Send MMS with media
+TwilioSms::sendMessage(
+    '+1234567890',
+    'Check out this image!',
+    ['mediaUrls' => ['https://example.com/image.jpg']]
+);
+
+// Custom queue options
+TwilioSms::sendMessage(
+    '+1234567890',
+    'Hello from a custom queue!',
+    [
+        'queue' => 'high-priority',
+        'delay' => 30 // delay in seconds
+    ]
+);
+```
+
+#### Message Queuing
+
+By default, all messages are queued for sending. This behavior can be configured in `config/twilio-laravel.php`:
+
+```php
+// Disable queuing to send all messages immediately
+'queue_messages' => false,
+
+// Set a custom queue name
+'queue_name' => 'twilio',
+```
+
+Or by setting the following environment variables:
 
 ### Handling Webhooks
 

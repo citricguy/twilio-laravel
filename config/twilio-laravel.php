@@ -71,6 +71,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Message Queue Settings
+    |--------------------------------------------------------------------------
+    |
+    | These settings determine how Twilio messages are queued.
+    |
+    */
+    'queue_messages' => env('TWILIO_QUEUE_MESSAGES', true),
+    'queue_name' => env('TWILIO_QUEUE', 'default'),
+    'queue_retries' => env('TWILIO_QUEUE_RETRIES', 3),
+
+    /*
+    |--------------------------------------------------------------------------
     | Debug Mode
     |--------------------------------------------------------------------------
     |

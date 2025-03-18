@@ -2,12 +2,12 @@
 
 namespace Citricguy\TwilioLaravel;
 
-
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Citricguy\TwilioLaravel\Http\Middleware\VerifyTwilioWebhook;
 use Citricguy\TwilioLaravel\Http\Controllers\TwilioLaravelWebhookController;
 use Citricguy\TwilioLaravel\Console\VerifyWebhookSetupCommand;
+use Citricguy\TwilioLaravel\Services\TwilioService;
 
 class TwilioLaravelServiceProvider extends ServiceProvider
 {
@@ -29,6 +29,11 @@ class TwilioLaravelServiceProvider extends ServiceProvider
     public function register()
     {
         $this->mergeConfigFrom(__DIR__.'/../config/twilio-laravel.php', 'twilio-laravel');
+        
+        // Register the Twilio service
+        $this->app->singleton('twilio-sms', function ($app) {
+            return new TwilioService();
+        });
     }
 
     private function registerRoutes(): void
