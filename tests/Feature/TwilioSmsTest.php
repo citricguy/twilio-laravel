@@ -3,7 +3,7 @@
 namespace Citricguy\TwilioLaravel\Tests\Feature;
 
 use Citricguy\TwilioLaravel\Events\TwilioMessageQueued;
-use Citricguy\TwilioLaravel\Facades\TwilioSms;
+use Citricguy\TwilioLaravel\Facades\Twilio;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioMessage;
 use Citricguy\TwilioLaravel\Services\TwilioService;
 use Illuminate\Support\Facades\Event;
@@ -18,7 +18,7 @@ it('can send messages through the facade', function () {
     config(['twilio-laravel.queue_messages' => true]);
 
     // Send a message via the facade
-    TwilioSms::sendMessage('+12345678901', 'Test message via facade');
+    Twilio::sendMessage('+12345678901', 'Test message via facade');
 
     // Check that the job was queued
     Queue::assertPushed(SendTwilioMessage::class, function ($job) {
@@ -45,7 +45,7 @@ it('handles sending immediate messages via the facade', function () {
     app()->instance('twilio-sms', $mockService);
 
     // Use the facade to send
-    TwilioSms::sendMessageNow('+12345678901', 'Send immediately');
+    Twilio::sendMessageNow('+12345678901', 'Send immediately');
 });
 
 it('handles different configuration values', function () {
@@ -57,7 +57,7 @@ it('handles different configuration values', function () {
     config(['twilio-laravel.queue_name' => 'twilio-messages']);
 
     // Send message
-    TwilioSms::sendMessage('+12345678901', 'Custom queue test');
+    Twilio::sendMessage('+12345678901', 'Custom queue test');
 
     // Verify it was pushed to the right queue
     Queue::assertPushed(function (SendTwilioMessage $job) {
@@ -73,7 +73,7 @@ it('respects custom queue options', function () {
     config(['twilio-laravel.queue_messages' => true]);
 
     // Send message with custom queue
-    TwilioSms::sendMessage('+12345678901', 'Test message', [
+    Twilio::sendMessage('+12345678901', 'Test message', [
         'queue' => 'custom-queue-name',
     ]);
 
@@ -99,7 +99,7 @@ it('can set custom from number per message', function () {
     app()->instance('twilio-sms', $mockService);
 
     // Send with custom from
-    TwilioSms::sendMessageNow('+12345678901', 'Custom from', [
+    Twilio::sendMessageNow('+12345678901', 'Custom from', [
         'from' => '+15551234567',
     ]);
 });

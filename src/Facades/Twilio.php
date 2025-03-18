@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Facade;
  *
  * @see \Citricguy\TwilioLaravel\Services\TwilioService
  */
-class TwilioSms extends Facade
+class Twilio extends Facade
 {
     /**
      * Get the registered name of the component.
