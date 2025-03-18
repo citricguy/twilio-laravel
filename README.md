@@ -36,7 +36,12 @@ TWILIO_SID=your-twilio-account-sid
 TWILIO_TOKEN=your-twilio-auth-token
 TWILIO_FROM=+1234567890
 TWILIO_WEBHOOK_PATH=/api/twilio/webhook
+TWILIO_DEBUG=false
 ```
+
+### Debug Mode
+
+The `TWILIO_DEBUG` environment variable can be used to enable or disable debug mode. When debug mode is enabled (`TWILIO_DEBUG=true`), additional logging and debugging information will be available to help troubleshoot issues. It is recommended to keep debug mode disabled (`TWILIO_DEBUG=false`) in production environments.
 
 ## Usage
 
