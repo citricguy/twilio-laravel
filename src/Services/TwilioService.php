@@ -58,13 +58,15 @@ class TwilioService
                 'to' => $to,
             ];
 
-            // Use the from number provided in options, or fall back to config
-            if (isset($options['from'])) {
+            // Validate and set sender
+            if (! empty($options['from'])) {
                 $messageData['from'] = $options['from'];
-            } elseif (config('twilio-laravel.messaging_service_sid')) {
+            } elseif (! empty(config('twilio-laravel.messaging_service_sid'))) {
                 $messageData['messagingServiceSid'] = config('twilio-laravel.messaging_service_sid');
-            } else {
+            } elseif (! empty(config('twilio-laravel.from'))) {
                 $messageData['from'] = config('twilio-laravel.from');
+            } else {
+                throw new \Exception('No valid sender configured for Twilio.');
             }
 
             // Add media URLs if provided
@@ -78,22 +80,22 @@ class TwilioService
             }
 
             // Send the message
-            $message = $this->client->messages->create($to, $messageData);
+            $messageResponse = $this->client->messages->create($to, $messageData);
 
-            // Calculate segments
-            $segmentsCount = ceil(mb_strlen($messageData['body']) / 153);
+            // Ensure body is string safe for calculation
+            $segmentsCount = ceil(mb_strlen((string) $messageData['body']) / 153);
 
             // Fire the sent event
             event(new TwilioMessageSent(
-                $message->sid,
+                $messageResponse->sid,
                 $to,
                 $messageData['body'],
-                $message->status,
+                $messageResponse->status,
                 $segmentsCount,
                 $options
             ));
 
-            return $message;
+            return $messageResponse;
         } catch (\Exception $e) {
             if (config('twilio-laravel.debug', false)) {
                 Log::error('Twilio: Failed to send message', [

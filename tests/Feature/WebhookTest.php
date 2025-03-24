@@ -30,6 +30,6 @@ it('receives webhooks when validation is disabled', function () {
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
         return isset($event->payload['MessageSid'])
             && $event->payload['MessageSid'] === 'SM123456'
-            && $event->type === 'message';
+            && $event->type === TwilioWebhookReceived::TYPE_MESSAGE_INBOUND_SMS;
     });
 });

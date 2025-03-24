@@ -11,6 +11,37 @@
 
 A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and webhooks. This package leverages the official Twilio PHP SDK and adheres to Laravel conventions, providing a seamless, queued, and event-driven solution for sending messages and processing incoming Twilio callbacks.
 
+## 📋 Table of Contents
+
+- [Twilio Laravel](#twilio-laravel)
+  - [📋 Table of Contents](#-table-of-contents)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+    - [Debug Mode](#debug-mode)
+  - [Usage](#usage)
+    - [Sending SMS Messages](#sending-sms-messages)
+      - [Message Queuing](#message-queuing)
+  - [Working with Webhooks](#working-with-webhooks)
+    - [What are Twilio Webhooks?](#what-are-twilio-webhooks)
+    - [Webhook Types](#webhook-types)
+    - [Webhook Helper Methods](#webhook-helper-methods)
+    - [Handling Different Webhook Types](#handling-different-webhook-types)
+  - [Setting Up Twilio Webhooks](#setting-up-twilio-webhooks)
+    - [Step 1: Create a Webhook Endpoint](#step-1-create-a-webhook-endpoint)
+    - [Step 2: Make Your Endpoint Accessible](#step-2-make-your-endpoint-accessible)
+    - [Step 3: Configure Twilio to Send Webhooks](#step-3-configure-twilio-to-send-webhooks)
+    - [Step 4: Test Your Webhook](#step-4-test-your-webhook)
+  - [Webhook Security](#webhook-security)
+    - [Webhook Validation Explained](#webhook-validation-explained)
+  - [Verification Tools](#verification-tools)
+  - [Helper Functions](#helper-functions)
+    - [WebhookSignatureHelper](#webhooksignaturehelper)
+  - [Testing](#testing)
+    - [Testing Webhook Functionality](#testing-webhook-functionality)
+  - [Security](#security)
+  - [Credits](#credits)
+  - [License](#license)
+
 ## Installation
 
 You can install the package via composer:
@@ -95,23 +126,59 @@ By default, all messages are queued for sending. This behavior can be configured
 'queue_name' => 'twilio',
 ```
 
-Or by setting the following environment variables:
+## Working with Webhooks
 
-### Handling Webhooks
+A key feature of this package is its ability to receive and handle webhooks from Twilio. Webhooks enable your application to respond to events like message deliveries, incoming texts, voice calls, and more.
 
-The package includes a webhook handler that automatically validates incoming requests from Twilio and dispatches events that you can listen for in your application.
+### What are Twilio Webhooks?
 
-#### Configuring Webhooks in Twilio
+Webhooks are HTTP callbacks that Twilio sends to your application when certain events occur. For example:
+- When someone sends an SMS to your Twilio phone number
+- When the status of a message changes (delivered, failed, etc.)
+- When an incoming voice call is received
 
-1. Log into your <a href="https://www.twilio.com/console" target="_blank">Twilio Console</a>
-2. Navigate to your phone number settings
-3. Under "Messaging" or "Voice", set the webhook URL to:
-   ```
-   https://your-app-url.com/api/twilio/webhook
-   ```
-   (or whatever path you've configured in `TWILIO_WEBHOOK_PATH`)
+This package provides a simple way to receive these webhooks and process them in your Laravel application.
 
-#### Listening for Webhook Events
+### Webhook Types
+
+The package automatically detects different types of Twilio webhooks and categorizes them to make handling easier. The webhook types are:
+
+| Type | Description | Example Scenario |
+|------|-------------|------------------|
+| `message-inbound-sms` | Incoming SMS message | Someone texts your Twilio number |
+| `message-inbound-mms` | Incoming MMS message | Someone sends media to your Twilio number |
+| `message-status-*` | Message status updates | Your sent message is delivered or fails |
+| `voice-inbound` | Incoming voice call | Someone calls your Twilio number |
+| `voice-status` | Voice call status updates | A call ends or changes status |
+
+### Webhook Helper Methods
+
+The `TwilioWebhookReceived` event provides helper methods to easily identify webhook types:
+
+```php
+// High-level webhook categorization
+$event->isVoiceWebhook();  // Check if this is any type of voice webhook
+$event->isMessageWebhook(); // Check if this is any type of message webhook
+
+// Check for inbound messages (SMS or MMS)
+$event->isInboundMessage();
+$event->isInboundVoiceCall(); // Check specifically for inbound voice calls
+  
+// Specifically check for SMS vs MMS
+$event->isInboundSms();
+$event->isInboundMms();
+  
+// Check for status updates
+$event->isMessageStatusUpdate();
+$event->isVoiceStatusUpdate();
+$event->isStatusUpdate(); // Any type of status update
+  
+// Get the status value (e.g., "delivered", "failed", etc.)
+// Note: Status values are normalized to lowercase
+$event->getStatusType();
+```
+
+### Handling Different Webhook Types
 
 You can listen for webhook events in your `EventServiceProvider`:
 
@@ -126,7 +193,7 @@ protected $listen = [
 ];
 ```
 
-Create a listener to handle the webhook:
+Create a listener to handle different webhook types:
 
 ```php
 namespace App\Listeners;
@@ -140,26 +207,120 @@ class HandleTwilioWebhook
     {
         // Access webhook data
         $payload = $event->payload;
-        $type = $event->type;  // 'message', 'voice', or null
-
-        // Handle message webhooks
-        if ($type === 'message') {
-            $messageSid = $payload['MessageSid'] ?? null;
+        
+        // Quick check for webhook category
+        if ($event->isMessageWebhook()) {
+            Log::info('Received a message-related webhook');
+        } else if ($event->isVoiceWebhook()) {
+            Log::info('Received a voice-related webhook');
+        }
+        
+        // More specific handling
+        
+        // Handle incoming SMS and MMS
+        if ($event->isInboundMessage()) {
             $from = $payload['From'] ?? null;
             $body = $payload['Body'] ?? null;
             
-            // Process the message...
-            Log::info("Received SMS from $from: $body");
+            if ($event->isInboundMms()) {
+                // Process incoming MMS with media
+                $mediaCount = $payload['NumMedia'] ?? 0;
+                $mediaUrls = [];
+                
+                for ($i = 0; $i < intval($mediaCount); $i++) {
+                    $mediaUrls[] = $payload["MediaUrl$i"] ?? null;
+                }
+                
+                Log::info("Received MMS from $from with $mediaCount media items");
+                // Process the media...
+            } else {
+                // Process regular SMS
+                Log::info("Received SMS from $from: $body");
+                // Respond to the SMS...
+            }
         }
         
-        // Handle other webhook types as needed
+        // Handle message status updates
+        else if ($event->isMessageStatusUpdate()) {
+            $messageSid = $payload['MessageSid'] ?? null;
+            $status = $event->getStatusType(); // e.g., "delivered", "failed"
+            
+            Log::info("Message $messageSid status: $status");
+            
+            if ($status === 'failed') {
+                // Handle failed messages
+            }
+        }
+        
+        // Handle voice calls
+        else if ($event->isInboundVoiceCall()) {
+            $callSid = $payload['CallSid'] ?? null;
+            $from = $payload['From'] ?? null;
+            
+            Log::info("Incoming call from $from (SID: $callSid)");
+            // Handle the incoming call...
+        }
+        
+        // Handle voice status updates
+        else if ($event->isVoiceStatusUpdate()) {
+            $callSid = $payload['CallSid'] ?? null;
+            $status = $event->getStatusType(); // e.g., "completed", "busy"
+            
+            Log::info("Call $callSid status: $status");
+        }
     }
 }
 ```
 
-### Webhook Security
+## Setting Up Twilio Webhooks
 
-By default, the package validates all incoming webhook requests from Twilio using the signature validation mechanism. This ensures that webhooks are genuinely from Twilio.
+### Step 1: Create a Webhook Endpoint
+
+This package automatically creates a webhook endpoint at `/api/twilio/webhook` (or the path you've configured in your `.env` file).
+
+### Step 2: Make Your Endpoint Accessible
+
+During development, you can use tools like [Ngrok](https://ngrok.com/) to expose your local server to the internet:
+
+```bash
+ngrok http 8000
+```
+
+This will give you a public URL that you can use to receive webhooks.
+
+### Step 3: Configure Twilio to Send Webhooks
+
+1. Log into your [Twilio Console](https://www.twilio.com/console)
+2. Navigate to **Phone Numbers** > **Manage** > **Active Numbers**
+3. Click on the phone number you want to configure
+4. Configure the webhook URLs:
+
+   **For SMS/MMS**:
+   - Scroll to the "Messaging" section
+   - Under "A MESSAGE COMES IN", set the webhook URL to:
+     ```
+     https://your-ngrok-url.io/api/twilio/webhook
+     ```
+     (or your custom webhook path)
+   - Set the HTTP method to **POST**
+
+   **For Voice**:
+   - Scroll to the "Voice & Fax" section
+   - Under "A CALL COMES IN", set the webhook URL to:
+     ```
+     https://your-ngrok-url.io/api/twilio/webhook
+     ```
+   - Set the HTTP method to **POST**
+
+5. Save your changes
+
+### Step 4: Test Your Webhook
+
+Send a text message to your Twilio number or make a call to it. You should see the webhook being received in your Laravel logs.
+
+## Webhook Security
+
+By default, the package validates all incoming webhook requests from Twilio using their signature validation mechanism. This ensures that webhooks are genuinely from Twilio.
 
 You can disable this in development by setting:
 
@@ -170,57 +331,14 @@ TWILIO_VALIDATE_WEBHOOK=false
 
 This is not recommended for production.
 
-## Webhook Configuration
+### Webhook Validation Explained
 
-This package provides a route for receiving and processing Twilio webhooks. By default, the webhook endpoint is configured at `/api/twilio/webhook`, but you can customize this in your configuration.
+When Twilio sends a webhook, it includes an `X-Twilio-Signature` header that's generated based on:
+- Your Twilio auth token
+- The full URL of your webhook endpoint
+- The request parameters
 
-### Customizing the Webhook Path
-
-You can customize the webhook path by setting the `TWILIO_WEBHOOK_PATH` environment variable in your `.env` file:
-
-```
-TWILIO_WEBHOOK_PATH=/your/custom/webhook/path
-```
-
-Alternatively, you can publish the configuration file and modify the `webhook_path` setting directly:
-
-```php
-'webhook_path' => env('TWILIO_WEBHOOK_PATH', '/api/twilio/webhook'),
-```
-
-### Setting Up Twilio to Use Your Webhook
-
-1. Go to the Twilio Console
-2. Navigate to your phone number settings
-3. In the "Messaging" section, set the webhook URL to your application's URL plus the webhook path:
-   ```
-   https://your-app-domain.com/api/twilio/webhook
-   ```
-   (Or your custom path if you've changed it)
-4. Select "HTTP POST" as the request method
-5. Save your changes
-
-### Webhook Security
-
-All webhooks are automatically validated using Twilio's signature validation process when `TWILIO_VALIDATE_WEBHOOK` is set to `true` (the default). This ensures that requests are genuinely coming from Twilio and haven't been tampered with.
-
-You can disable validation in development environments by setting:
-
-```
-TWILIO_VALIDATE_WEBHOOK=false
-```
-
-### Testing Webhooks
-
-When writing tests that interact with the webhook endpoint, make sure to use the configured path from the config:
-
-```php
-// In your tests
-$webhookPath = config('twilio-laravel.webhook_path');
-$response = $this->postJson($webhookPath, [...]);
-```
-
-This ensures your tests will continue to work even if you change the webhook path configuration.
+The package verifies this signature to ensure the request is legitimate.
 
 ## Verification Tools
 
@@ -274,8 +392,30 @@ The package includes comprehensive tests for the webhook handling system, includ
 To test your application's handling of Twilio webhooks:
 
 1. Set `TWILIO_VALIDATE_WEBHOOK=false` in your testing environment
-2. Use the included test helpers to simulate webhook calls
-3. Assert that your listeners process the events correctly
+2. Use the WebhookSignatureHelper to simulate webhook calls if necessary
+3. Create test cases for each webhook type you need to handle
+
+Example test for handling an incoming SMS:
+
+```php
+public function test_can_handle_incoming_sms()
+{
+    Event::fake();
+    
+    $webhookPath = config('twilio-laravel.webhook_path');
+    
+    $this->postJson($webhookPath, [
+        'MessageSid' => 'SM123456',
+        'From' => '+12345678901',
+        'Body' => 'Test message'
+    ]);
+    
+    Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
+        return $event->isInboundSms() && 
+               $event->payload['From'] === '+12345678901';
+    });
+}
+```
 
 ## Security
 
@@ -283,8 +423,8 @@ If you discover any security-related issues, please email citricguy@gmail.com in
 
 ## Credits
 
-- <a href="https://github.com/citricguy" target="_blank">Josh Sommers</a>
-- <a href="../../contributors" target="_blank">All Contributors</a>
+- [Josh Sommers](https://github.com/citricguy)
+- [All Contributors](../../contributors)
 
 ## License
 

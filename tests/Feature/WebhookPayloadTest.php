@@ -23,11 +23,11 @@ it('correctly identifies SMS webhook type', function () {
     $response->assertStatus(202);
 
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
-        return $event->type === 'message';
+        return $event->type === TwilioWebhookReceived::TYPE_MESSAGE_INBOUND_SMS;
     });
 });
 
-it('correctly identifies voice webhook type', function () {
+it('correctly identifies voice inbound webhook type', function () {
     config(['twilio-laravel.validate_webhook' => false]);
     Event::fake();
 
@@ -42,7 +42,28 @@ it('correctly identifies voice webhook type', function () {
     $response->assertStatus(202);
 
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
-        return $event->type === 'voice';
+        return $event->type === TwilioWebhookReceived::TYPE_VOICE_INBOUND &&
+               $event->isInboundVoiceCall();
+    });
+});
+
+it('correctly identifies voice status webhook type', function () {
+    config(['twilio-laravel.validate_webhook' => false]);
+    Event::fake();
+
+    $webhookPath = config('twilio-laravel.webhook_path');
+
+    $response = $this->postJson($webhookPath, [
+        'CallSid' => 'CA123456',
+        'From' => '+12345678901',
+        'CallStatus' => 'completed',
+    ]);
+
+    $response->assertStatus(202);
+
+    Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
+        return $event->type === TwilioWebhookReceived::TYPE_VOICE_STATUS &&
+               $event->isVoiceStatusUpdate();
     });
 });
 
@@ -84,7 +105,31 @@ it('processes webhooks with complex nested payloads', function () {
     $response->assertStatus(202);
 
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
-        return $event->payload['NumMedia'] === '1' &&
+        return $event->type === 'message-inbound-mms' &&
+               $event->isInboundMms() &&
+               $event->payload['NumMedia'] === '1' &&
                isset($event->payload['extra']['nested']);
+    });
+});
+
+it('correctly identifies message status updates', function () {
+    config(['twilio-laravel.validate_webhook' => false]);
+    Event::fake();
+
+    $webhookPath = config('twilio-laravel.webhook_path');
+
+    $response = $this->postJson($webhookPath, [
+        'MessageSid' => 'SM123456',
+        'MessageStatus' => 'delivered',
+        'To' => '+19876543210',
+        'From' => '+12345678901',
+    ]);
+
+    $response->assertStatus(202);
+
+    Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
+        return $event->type === 'message-status-delivered' &&
+               $event->isMessageStatusUpdate() &&
+               $event->getStatusType() === 'delivered';
     });
 });
