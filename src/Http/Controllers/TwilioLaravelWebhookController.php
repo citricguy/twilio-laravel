@@ -5,13 +5,14 @@ namespace Citricguy\TwilioLaravel\Http\Controllers;
 use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Response;
 
 class TwilioLaravelWebhookController
 {
     /**
      * Handle the incoming Twilio webhook request.
      */
-    public function __invoke(Request $request): \Illuminate\Http\JsonResponse
+    public function __invoke(Request $request): Response|\Illuminate\Http\JsonResponse
     {
         $payload = $request->all();
 
@@ -19,9 +20,20 @@ class TwilioLaravelWebhookController
             Log::debug('Twilio webhook received', ['payload' => $payload]);
         }
 
-        // Dispatch event with the webhook payload
-        TwilioWebhookReceived::dispatch($payload);
+        // Create and dispatch the event
+        $event = new TwilioWebhookReceived($payload);
+        $responses = event($event);
+        
+        // Check if any listener returned a response
+        if (is_array($responses)) {
+            foreach ($responses as $response) {
+                if ($response instanceof Response) {
+                    return $response;
+                }
+            }
+        }
 
+        // Default response if no listener returned anything
         return response()->json(['success' => true, 'message' => 'Webhook received'])->setStatusCode(202);
     }
 }
