@@ -22,10 +22,19 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
     - [Sending SMS Messages](#sending-sms-messages)
       - [Message Queuing](#message-queuing)
   - [Working with Webhooks](#working-with-webhooks)
-    - [What are Twilio Webhooks?](#what-are-twilio-webhooks)
     - [Webhook Types](#webhook-types)
     - [Webhook Helper Methods](#webhook-helper-methods)
     - [Handling Different Webhook Types](#handling-different-webhook-types)
+    - [How Responses Work](#how-responses-work)
+  - [Integration Guide](#integration-guide)
+    - [Setting Up Event Listeners](#setting-up-event-listeners)
+    - [Handling Immediate Responses](#handling-immediate-responses)
+    - [Background Processing](#background-processing)
+      - [Option 1: Queue the whole listener](#option-1-queue-the-whole-listener)
+      - [Option 2: Queue specific processing tasks](#option-2-queue-specific-processing-tasks)
+    - [Integration Patterns](#integration-patterns)
+      - [Multiple Specialized Listeners](#multiple-specialized-listeners)
+      - [Service-Based Approach](#service-based-approach)
   - [Setting Up Twilio Webhooks](#setting-up-twilio-webhooks)
     - [Step 1: Create a Webhook Endpoint](#step-1-create-a-webhook-endpoint)
     - [Step 2: Make Your Endpoint Accessible](#step-2-make-your-endpoint-accessible)
@@ -33,11 +42,11 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
     - [Step 4: Test Your Webhook](#step-4-test-your-webhook)
   - [Webhook Security](#webhook-security)
     - [Webhook Validation Explained](#webhook-validation-explained)
-  - [Verification Tools](#verification-tools)
-  - [Helper Functions](#helper-functions)
-    - [WebhookSignatureHelper](#webhooksignaturehelper)
   - [Testing](#testing)
-    - [Testing Webhook Functionality](#testing-webhook-functionality)
+    - [Testing Your Webhook Handlers](#testing-your-webhook-handlers)
+      - [Option 1: Dispatching the Event Directly](#option-1-dispatching-the-event-directly)
+      - [Option 2: Testing the HTTP Endpoint](#option-2-testing-the-http-endpoint)
+      - [Option 3: Integration Testing with Response Expectations](#option-3-integration-testing-with-response-expectations)
   - [Security](#security)
   - [Credits](#credits)
   - [License](#license)
@@ -130,26 +139,18 @@ By default, all messages are queued for sending. This behavior can be configured
 
 A key feature of this package is its ability to receive and handle webhooks from Twilio. Webhooks enable your application to respond to events like message deliveries, incoming texts, voice calls, and more.
 
-### What are Twilio Webhooks?
-
-Webhooks are HTTP callbacks that Twilio sends to your application when certain events occur. For example:
-- When someone sends an SMS to your Twilio phone number
-- When the status of a message changes (delivered, failed, etc.)
-- When an incoming voice call is received
-
-This package provides a simple way to receive these webhooks and process them in your Laravel application.
-
 ### Webhook Types
 
-The package automatically detects different types of Twilio webhooks and categorizes them to make handling easier. The webhook types are:
+The package automatically detects different types of Twilio webhooks and categorizes them to make handling easier:
 
-| Type | Description | Example Scenario |
-|------|-------------|------------------|
-| `message-inbound-sms` | Incoming SMS message | Someone texts your Twilio number |
-| `message-inbound-mms` | Incoming MMS message | Someone sends media to your Twilio number |
-| `message-status-*` | Message status updates | Your sent message is delivered or fails |
-| `voice-inbound` | Incoming voice call | Someone calls your Twilio number |
-| `voice-status` | Voice call status updates | A call ends or changes status |
+| Type | Constant | Description | Example |
+|------|----------|-------------|---------|
+| Voice Inbound | `TYPE_VOICE_INBOUND` | Incoming voice call | Someone calls your Twilio number |
+| Voice Status | `TYPE_VOICE_STATUS` | Voice call status update | A call ends or changes status |
+| Message Inbound SMS | `TYPE_MESSAGE_INBOUND_SMS` | Incoming SMS message | Someone texts your Twilio number |
+| Message Inbound MMS | `TYPE_MESSAGE_INBOUND_MMS` | Incoming MMS message | Someone sends media to your Twilio number |
+| Message Status | `TYPE_MESSAGE_STATUS_PREFIX` + status | Message status update | Your sent message is delivered or fails |
+| Generic Message | `TYPE_MESSAGE_GENERIC` | Other message webhook | Fallback for other message events |
 
 ### Webhook Helper Methods
 
@@ -157,25 +158,22 @@ The `TwilioWebhookReceived` event provides helper methods to easily identify web
 
 ```php
 // High-level webhook categorization
-$event->isVoiceWebhook();  // Check if this is any type of voice webhook
-$event->isMessageWebhook(); // Check if this is any type of message webhook
+$event->isVoiceWebhook();  // Any voice-related webhook
+$event->isMessageWebhook(); // Any message-related webhook
 
-// Check for inbound messages (SMS or MMS)
-$event->isInboundMessage();
-$event->isInboundVoiceCall(); // Check specifically for inbound voice calls
+// Inbound communication
+$event->isInboundMessage(); // Any incoming message (SMS or MMS)
+$event->isInboundSms();     // Specifically SMS
+$event->isInboundMms();     // Specifically MMS
+$event->isInboundVoiceCall(); // Incoming voice call
   
-// Specifically check for SMS vs MMS
-$event->isInboundSms();
-$event->isInboundMms();
+// Status updates
+$event->isMessageStatusUpdate(); // Message status updates
+$event->isVoiceStatusUpdate();   // Voice call status updates
+$event->isStatusUpdate();        // Any status update
   
-// Check for status updates
-$event->isMessageStatusUpdate();
-$event->isVoiceStatusUpdate();
-$event->isStatusUpdate(); // Any type of status update
-  
-// Get the status value (e.g., "delivered", "failed", etc.)
-// Note: Status values are normalized to lowercase
-$event->getStatusType();
+// Get the specific status value
+$event->getStatusType(); // Returns normalized lowercase status value
 ```
 
 ### Handling Different Webhook Types
@@ -186,14 +184,13 @@ You can listen for webhook events in your `EventServiceProvider`:
 use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
 
 protected $listen = [
-    // ... other event listeners
     TwilioWebhookReceived::class => [
         App\Listeners\HandleTwilioWebhook::class,
     ],
 ];
 ```
 
-Create a listener to handle different webhook types:
+Then create a listener to handle the different webhook types:
 
 ```php
 namespace App\Listeners;
@@ -205,69 +202,240 @@ class HandleTwilioWebhook
 {
     public function handle(TwilioWebhookReceived $event)
     {
-        // Access webhook data
-        $payload = $event->payload;
-        
-        // Quick check for webhook category
-        if ($event->isMessageWebhook()) {
-            Log::info('Received a message-related webhook');
-        } else if ($event->isVoiceWebhook()) {
-            Log::info('Received a voice-related webhook');
-        }
-        
-        // More specific handling
-        
-        // Handle incoming SMS and MMS
-        if ($event->isInboundMessage()) {
-            $from = $payload['From'] ?? null;
-            $body = $payload['Body'] ?? null;
-            
-            if ($event->isInboundMms()) {
-                // Process incoming MMS with media
-                $mediaCount = $payload['NumMedia'] ?? 0;
-                $mediaUrls = [];
+        // Voice call handling - requires immediate TwiML response
+        if ($event->isInboundVoiceCall()) {
+            $twiml = '<?xml version="1.0" encoding="UTF-8"?>
+                <Response>
+                    <Say>Hello! Thanks for calling.</Say>
+                </Response>';
                 
-                for ($i = 0; $i < intval($mediaCount); $i++) {
-                    $mediaUrls[] = $payload["MediaUrl$i"] ?? null;
-                }
-                
-                Log::info("Received MMS from $from with $mediaCount media items");
-                // Process the media...
-            } else {
-                // Process regular SMS
-                Log::info("Received SMS from $from: $body");
-                // Respond to the SMS...
-            }
+            return response($twiml, 200, ['Content-Type' => 'text/xml']);
         }
         
-        // Handle message status updates
-        else if ($event->isMessageStatusUpdate()) {
-            $messageSid = $payload['MessageSid'] ?? null;
-            $status = $event->getStatusType(); // e.g., "delivered", "failed"
-            
-            Log::info("Message $messageSid status: $status");
-            
-            if ($status === 'failed') {
-                // Handle failed messages
-            }
+        // Other webhook types can be handled without returning a response
+        if ($event->isInboundSms()) {
+            // Process the SMS...
+            Log::info("SMS received: " . ($event->payload['Body'] ?? ''));
         }
         
-        // Handle voice calls
-        else if ($event->isInboundVoiceCall()) {
-            $callSid = $payload['CallSid'] ?? null;
-            $from = $payload['From'] ?? null;
-            
-            Log::info("Incoming call from $from (SID: $callSid)");
-            // Handle the incoming call...
+        if ($event->isMessageStatusUpdate()) {
+            // Handle status update...
+            Log::info("Message status: " . $event->getStatusType());
+        }
+    }
+}
+```
+
+### How Responses Work
+
+The package is designed to handle both immediate responses and background processing:
+
+1. When a webhook arrives, the controller dispatches the `TwilioWebhookReceived` event
+2. Your listener processes the event and can optionally return a Response object
+3. If your listener returns a Response, the controller will return it to Twilio
+4. If no Response is returned, the controller sends a default 202 Accepted response
+
+This approach allows you to:
+- Return TwiML responses for voice calls (which require immediate responses)
+- Simply process other webhooks without worrying about responses
+- Optionally queue time-consuming processing for any webhook type
+
+## Integration Guide
+
+This section provides practical examples of how to integrate this package into your Laravel application.
+
+### Setting Up Event Listeners
+
+Register your listener in your `EventServiceProvider`:
+
+```php
+// In app/Providers/EventServiceProvider.php
+protected $listen = [
+    \Citricguy\TwilioLaravel\Events\TwilioWebhookReceived::class => [
+        \App\Listeners\TwilioWebhookHandler::class,
+    ],
+];
+```
+
+### Handling Immediate Responses
+
+For webhooks that require immediate responses (like voice calls):
+
+```php
+// app/Listeners/TwilioWebhookHandler.php
+namespace App\Listeners;
+
+use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
+
+class TwilioWebhookHandler
+{
+    public function handle(TwilioWebhookReceived $event)
+    {
+        if ($event->isInboundVoiceCall()) {
+            // Voice calls require immediate TwiML responses
+            return response(
+                '<?xml version="1.0" encoding="UTF-8"?>
+                <Response>
+                    <Say>Thank you for calling. We\'ll connect you shortly.</Say>
+                    <Dial>+19876543210</Dial>
+                </Response>',
+                200,
+                ['Content-Type' => 'text/xml']
+            );
         }
         
-        // Handle voice status updates
-        else if ($event->isVoiceStatusUpdate()) {
-            $callSid = $payload['CallSid'] ?? null;
-            $status = $event->getStatusType(); // e.g., "completed", "busy"
-            
-            Log::info("Call $callSid status: $status");
+        // For other webhooks, no return value is needed
+    }
+}
+```
+
+The key points:
+1. DO NOT make your listener implement `ShouldQueue` if you need immediate responses
+2. Return a Response object with TwiML content for voice calls
+3. Set the Content-Type header to 'text/xml' for TwiML responses
+
+### Background Processing
+
+For webhooks that can be processed in the background:
+
+#### Option 1: Queue the whole listener
+
+```php
+namespace App\Listeners;
+
+use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class ProcessMessageStatusUpdates implements ShouldQueue
+{
+    public function handle(TwilioWebhookReceived $event)
+    {
+        if ($event->isMessageStatusUpdate()) {
+            // This will run in the background
+            // Process the status update...
         }
+    }
+}
+```
+
+Register this alongside your immediate response listener:
+
+```php
+protected $listen = [
+    \Citricguy\TwilioLaravel\Events\TwilioWebhookReceived::class => [
+        \App\Listeners\TwilioImmediateResponseHandler::class,  // Not queued
+        \App\Listeners\ProcessMessageStatusUpdates::class,     // Queued
+    ],
+];
+```
+
+#### Option 2: Queue specific processing tasks
+
+```php
+namespace App\Listeners;
+
+use App\Jobs\ProcessSmsMessage;
+use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
+
+class TwilioWebhookHandler
+{
+    public function handle(TwilioWebhookReceived $event)
+    {
+        if ($event->isInboundVoiceCall()) {
+            // Handle voice calls immediately
+            return $this->generateVoiceResponse();
+        }
+        
+        if ($event->isInboundSms()) {
+            // Queue the heavy processing
+            ProcessSmsMessage::dispatch($event->payload)
+                ->onQueue('twilio-webhooks');
+        }
+    }
+    
+    private function generateVoiceResponse()
+    {
+        // Generate and return TwiML
+    }
+}
+```
+
+### Integration Patterns
+
+For larger applications, consider these patterns:
+
+#### Multiple Specialized Listeners
+
+```php
+// In EventServiceProvider.php
+protected $listen = [
+    \Citricguy\TwilioLaravel\Events\TwilioWebhookReceived::class => [
+        \App\Listeners\TwilioVoiceHandler::class,
+        \App\Listeners\TwilioMessageHandler::class,
+    ],
+];
+
+// In TwilioVoiceHandler.php
+public function handle(TwilioWebhookReceived $event)
+{
+    if (!$event->isVoiceWebhook()) {
+        return; // Only process voice webhooks
+    }
+    
+    if ($event->isInboundVoiceCall()) {
+        return $this->generateTwimlResponse();
+    }
+}
+
+// In TwilioMessageHandler.php (could implement ShouldQueue)
+public function handle(TwilioWebhookReceived $event)
+{
+    if (!$event->isMessageWebhook()) {
+        return; // Only process message webhooks
+    }
+    
+    // Process message webhooks...
+}
+```
+
+#### Service-Based Approach
+
+```php
+// In app/Services/TwilioWebhookService.php
+namespace App\Services;
+
+use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
+
+class TwilioWebhookService
+{
+    public function handleVoiceCall(array $payload)
+    {
+        // Process voice call and return TwiML
+        return response($this->generateTwiml(), 200, ['Content-Type' => 'text/xml']);
+    }
+    
+    public function processIncomingSms(array $payload)
+    {
+        // Process SMS...
+    }
+    
+    private function generateTwiml()
+    {
+        // Generate TwiML
+    }
+}
+
+// In your listener
+public function handle(TwilioWebhookReceived $event)
+{
+    $service = app(TwilioWebhookService::class);
+    
+    if ($event->isInboundVoiceCall()) {
+        return $service->handleVoiceCall($event->payload);
+    }
+    
+    if ($event->isInboundSms()) {
+        $service->processIncomingSms($event->payload);
     }
 }
 ```
@@ -324,8 +492,8 @@ By default, the package validates all incoming webhook requests from Twilio usin
 
 You can disable this in development by setting:
 
-```php
-// .env file
+```
+# In .env file
 TWILIO_VALIDATE_WEBHOOK=false
 ```
 
@@ -340,80 +508,88 @@ When Twilio sends a webhook, it includes an `X-Twilio-Signature` header that's g
 
 The package verifies this signature to ensure the request is legitimate.
 
-## Verification Tools
-
-The package includes a helpful command to verify your webhook setup:
-
-```bash
-php artisan twilio:verify-webhook-setup --url=https://your-production-domain.com
-```
-
-This command will:
-- Check if your auth token is configured
-- Verify your webhook path settings
-- Display the full webhook URL to configure in Twilio
-- Confirm if signature validation is enabled
-
-## Helper Functions
-
-### WebhookSignatureHelper
-
-The package includes utilities to help with webhook signature validation:
-
-```php
-use Citricguy\TwilioLaravel\Helpers\WebhookSignatureHelper;
-
-// Generate a signature for testing
-$signature = WebhookSignatureHelper::generateValidSignature(
-    'https://your-url.com/api/twilio/webhook',
-    ['MessageSid' => 'SM123456'],
-    'your-auth-token'
-);
-
-// Verify a signature
-$isValid = WebhookSignatureHelper::isValidSignature(
-    $signatureFromHeader,
-    'https://your-url.com/api/twilio/webhook',
-    $requestParams,
-    'your-auth-token'
-);
-```
-
 ## Testing
 
-```bash
-composer test
-```
+### Testing Your Webhook Handlers
 
-The package includes comprehensive tests for the webhook handling system, including middleware validation tests.
+You can test your webhook handlers in several ways:
 
-### Testing Webhook Functionality
-
-To test your application's handling of Twilio webhooks:
-
-1. Set `TWILIO_VALIDATE_WEBHOOK=false` in your testing environment
-2. Use the WebhookSignatureHelper to simulate webhook calls if necessary
-3. Create test cases for each webhook type you need to handle
-
-Example test for handling an incoming SMS:
+#### Option 1: Dispatching the Event Directly
 
 ```php
-public function test_can_handle_incoming_sms()
+// In your test
+public function test_can_handle_voice_call()
 {
-    Event::fake();
+    // Create a test payload
+    $payload = [
+        'CallSid' => 'CA123456',
+        'From' => '+12345678901',
+        'CallStatus' => 'ringing',
+    ];
     
-    $webhookPath = config('twilio-laravel.webhook_path');
+    // Create the event
+    $event = new TwilioWebhookReceived($payload);
     
-    $this->postJson($webhookPath, [
+    // Dispatch the event and get responses
+    $responses = Event::dispatch($event);
+    
+    // Check if a TwiML response was returned
+    $this->assertInstanceOf(\Illuminate\Http\Response::class, $responses[0]);
+    $this->assertStringContainsString('<Response>', $responses[0]->getContent());
+}
+```
+
+#### Option 2: Testing the HTTP Endpoint
+
+```php
+public function test_webhook_endpoint_processes_sms()
+{
+    // Disable signature validation for testing
+    config(['twilio-laravel.validate_webhook' => false]);
+    
+    // Mock the event listener to verify it gets called
+    Event::fake([TwilioWebhookReceived::class]);
+    
+    // Send a request to the webhook endpoint
+    $response = $this->postJson(config('twilio-laravel.webhook_path'), [
         'MessageSid' => 'SM123456',
         'From' => '+12345678901',
-        'Body' => 'Test message'
+        'Body' => 'Test message',
     ]);
     
+    // Verify response
+    $response->assertStatus(202);
+    
+    // Verify event was dispatched with correct payload
     Event::assertDispatched(TwilioWebhookReceived::class, function ($event) {
         return $event->isInboundSms() && 
                $event->payload['From'] === '+12345678901';
     });
+}
+```
+
+#### Option 3: Integration Testing with Response Expectations
+
+```php
+public function test_voice_call_returns_twiml()
+{
+    // Disable signature validation for testing
+    config(['twilio-laravel.validate_webhook' => false]);
+    
+    // Use real event dispatching to test the full flow
+    Event::fake([TwilioWebhookReceived::class]);
+    
+    // Send a voice webhook
+    $response = $this->postJson(config('twilio-laravel.webhook_path'), [
+        'CallSid' => 'CA123456',
+        'From' => '+12345678901',
+        'CallStatus' => 'ringing',
+    ]);
+    
+    // For voice calls, we should get a TwiML response
+    $response->assertStatus(200);
+    $response->assertHeader('Content-Type', 'text/xml');
+    $response->assertSee('<Response>');
 }
 ```
 
