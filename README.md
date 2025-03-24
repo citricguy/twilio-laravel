@@ -1,4 +1,4 @@
-# Twilio Laravel
+# Twilio for Laravel (Unoffical)
 
 <p align="center">
   <a href="https://packagist.org/packages/citricguy/twilio-laravel" target="_blank">
@@ -13,7 +13,7 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
 
 ## 📋 Table of Contents
 
-- [Twilio Laravel](#twilio-laravel)
+- [Twilio for Laravel (Unoffical)](#twilio-for-laravel-unoffical)
   - [📋 Table of Contents](#-table-of-contents)
   - [Installation](#installation)
   - [Configuration](#configuration)
