@@ -26,6 +26,8 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
     - [Webhook Helper Methods](#webhook-helper-methods)
     - [Handling Different Webhook Types](#handling-different-webhook-types)
     - [How Responses Work](#how-responses-work)
+  - [Events](#events)
+    - [Message Events](#message-events)
   - [Integration Guide](#integration-guide)
     - [Setting Up Event Listeners](#setting-up-event-listeners)
     - [Handling Immediate Responses](#handling-immediate-responses)
@@ -43,6 +45,7 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
   - [Webhook Security](#webhook-security)
     - [Webhook Validation Explained](#webhook-validation-explained)
   - [Testing](#testing)
+    - [Faking the Twilio Facade](#faking-the-twilio-facade)
     - [Testing Your Webhook Handlers](#testing-your-webhook-handlers)
       - [Option 1: Dispatching the Event Directly](#option-1-dispatching-the-event-directly)
       - [Option 2: Testing the HTTP Endpoint](#option-2-testing-the-http-endpoint)
@@ -239,6 +242,54 @@ This approach allows you to:
 - Return TwiML responses for voice calls (which require immediate responses)
 - Simply process other webhooks without worrying about responses
 - Optionally queue time-consuming processing for any webhook type
+
+## Events
+
+This package provides several events you can listen for in your application:
+
+### Message Events
+
+| Event | Description | Properties |
+|-------|-------------|------------|
+| `TwilioMessageQueued` | Fired when a message is queued for sending | `to`, `message`, `status`, `segmentsCount`, `options` |
+| `TwilioMessageSent` | Fired when a message is sent successfully | `messageSid`, `to`, `message`, `status`, `segmentsCount`, `options` |
+
+You can listen for these events in your `EventServiceProvider`:
+
+```php
+protected $listen = [
+    \Citricguy\TwilioLaravel\Events\TwilioMessageSent::class => [
+        \App\Listeners\LogTwilioMessageSent::class,
+    ],
+    \Citricguy\TwilioLaravel\Events\TwilioMessageQueued::class => [
+        \App\Listeners\LogTwilioMessageQueued::class,
+    ],
+];
+```
+
+Example listener for message sent events:
+
+```php
+namespace App\Listeners;
+
+use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
+use Illuminate\Support\Facades\Log;
+
+class LogTwilioMessageSent
+{
+    public function handle(TwilioMessageSent $event)
+    {
+        Log::info('Twilio message sent', [
+            'sid' => $event->messageSid,
+            'to' => $event->to,
+            'segments' => $event->segmentsCount,
+            'status' => $event->status
+        ]);
+        
+        // You can perform additional actions here based on the message
+    }
+}
+```
 
 ## Integration Guide
 
@@ -509,6 +560,37 @@ When Twilio sends a webhook, it includes an `X-Twilio-Signature` header that's g
 The package verifies this signature to ensure the request is legitimate.
 
 ## Testing
+
+### Faking the Twilio Facade
+
+During testing, you'll typically want to avoid making actual API calls to Twilio. The package provides a way to fake the Twilio facade:
+
+```php
+use Citricguy\TwilioLaravel\Facades\Twilio;
+
+// In your test method or setUp
+Twilio::fake();
+
+// Now any calls to Twilio::sendMessage() won't actually call the Twilio API
+Twilio::sendMessage('+1234567890', 'Test message');
+
+// You can make assertions on the messages that would have been sent
+Twilio::assertSent(function ($message) {
+    return $message->to === '+1234567890' &&
+           $message->body === 'Test message';
+});
+
+// Assert a message was sent to a specific number
+Twilio::assertSentTo('+1234567890');
+
+// Assert a specific number of messages were sent
+Twilio::assertSentCount(1);
+
+// Assert no messages were sent
+Twilio::assertNothingSent();
+```
+
+This allows you to test code that uses the Twilio facade without actually sending messages or making API calls.
 
 ### Testing Your Webhook Handlers
 
