@@ -251,6 +251,7 @@ This package provides several events you can listen for in your application:
 
 | Event | Description | Properties |
 |-------|-------------|------------|
+| `TwilioMessageSending` | Fired before a message is sent - can be cancelled | `to`, `message`, `options` |
 | `TwilioMessageQueued` | Fired when a message is queued for sending | `to`, `message`, `status`, `segmentsCount`, `options` |
 | `TwilioMessageSent` | Fired when a message is sent successfully | `messageSid`, `to`, `message`, `status`, `segmentsCount`, `options` |
 
@@ -258,35 +259,238 @@ You can listen for these events in your `EventServiceProvider`:
 
 ```php
 protected $listen = [
+    \Citricguy\TwilioLaravel\Events\TwilioMessageSending::class => [
+        \App\Listeners\ValidateMessageBeforeSending::class,
+    ],
     \Citricguy\TwilioLaravel\Events\TwilioMessageSent::class => [
         \App\Listeners\LogTwilioMessageSent::class,
     ],
     \Citricguy\TwilioLaravel\Events\TwilioMessageQueued::class => [
         \App\Listeners\LogTwilioMessageQueued::class,
     ],
+    \Citricguy\TwilioLaravel\Events\TwilioWebhookReceived::class => [
+        \App\Listeners\HandleTwilioWebhook::class,
+    ],
 ];
 ```
 
-Example listener for message sent events:
+#### TwilioMessageSending Example
+
+The `TwilioMessageSending` event allows you to implement validation logic before a message is sent. You can cancel the message if it doesn't meet your criteria:
+
+```php
+namespace App\Listeners;
+
+use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
+use App\Models\BlockedNumber;
+use App\Services\PhoneNumberService;
+
+class ValidateMessageBeforeSending
+{
+    protected $phoneNumberService;
+    
+    public function __construct(PhoneNumberService $phoneNumberService)
+    {
+        $this->phoneNumberService = $phoneNumberService;
+    }
+    
+    public function handle(TwilioMessageSending $event)
+    {
+        $to = $event->to;
+        
+        // Example 1: Check against database of blocked numbers
+        if (BlockedNumber::where('phone_number', $to)->exists()) {
+            return $event->cancel('Number is in blocked list');
+        }
+        
+        // Example 2: Check area code restrictions
+        $areaCode = $this->phoneNumberService->getAreaCode($to);
+        $blockedAreaCodes = ['555', '900'];
+        
+        if (in_array($areaCode, $blockedAreaCodes)) {
+            return $event->cancel('Area code is not allowed');
+        }
+        
+        // Example 3: Check for international numbers if not allowed
+        if (!config('app.allow_international_sms') && !$this->phoneNumberService->isDomestic($to)) {
+            return $event->cancel('International messages are disabled');
+        }
+        
+        // Example 4: Rate limiting
+        if ($this->phoneNumberService->isRateLimited($to)) {
+            return $event->cancel('Rate limit exceeded for this number');
+        }
+    }
+}
+```
+
+When a message is cancelled:
+- The `sendMessage` or `sendMessageNow` method returns an array with:
+  - `status` => 'cancelled'
+  - `to` => the recipient number
+  - `reason` => the optional cancellation reason provided
+
+#### TwilioMessageQueued Example
+
+The `TwilioMessageQueued` event is fired when a message is successfully queued for later sending:
+
+```php
+namespace App\Listeners;
+
+use Citricguy\TwilioLaravel\Events\TwilioMessageQueued;
+use App\Models\SmsMessage;
+use Illuminate\Support\Facades\Log;
+
+class LogTwilioMessageQueued
+{
+    public function handle(TwilioMessageQueued $event)
+    {
+        // Example 1: Record in database for tracking/analytics
+        SmsMessage::create([
+            'to' => $event->to,
+            'message' => $event->message,
+            'status' => 'queued',
+            'segments' => $event->segmentsCount,
+            'queued_at' => now(),
+        ]);
+        
+        // Example 2: Add custom logging
+        Log::channel('sms')->info('SMS queued for sending', [
+            'to' => $event->to,
+            'segments' => $event->segmentsCount,
+            'queue' => $event->options['queue'] ?? 'default',
+        ]);
+        
+        // Example 3: Notify admin of high-priority messages
+        if (!empty($event->options['priority']) && $event->options['priority'] === 'high') {
+            // Send notification to admin dashboard
+            event(new \App\Events\HighPrioritySmsQueued($event->to, $event->message));
+        }
+    }
+}
+```
+
+#### TwilioMessageSent Example
+
+The `TwilioMessageSent` event is fired when a message is actually sent to Twilio's API:
 
 ```php
 namespace App\Listeners;
 
 use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
-use Illuminate\Support\Facades\Log;
+use App\Models\SmsMessage;
+use App\Services\BillingService;
 
 class LogTwilioMessageSent
 {
+    protected $billingService;
+    
+    public function __construct(BillingService $billingService)
+    {
+        $this->billingService = $billingService;
+    }
+    
     public function handle(TwilioMessageSent $event)
     {
-        Log::info('Twilio message sent', [
-            'sid' => $event->messageSid,
+        // Example 1: Update message status in database
+        SmsMessage::updateOrCreate(
+            ['to' => $event->to, 'status' => 'queued'],
+            [
+                'message_sid' => $event->messageSid,
+                'status' => $event->status,
+                'segments' => $event->segmentsCount,
+                'sent_at' => now(),
+            ]
+        );
+        
+        // Example 2: Track SMS costs for customer billing
+        $this->billingService->trackMessageCost(
+            $event->messageSid,
+            $event->to,
+            $event->segmentsCount,
+            $event->options['customer_id'] ?? null
+        );
+        
+        // Example 3: Record analytics
+        app('analytics')->trackEvent('sms_sent', [
             'to' => $event->to,
             'segments' => $event->segmentsCount,
             'status' => $event->status
         ]);
+    }
+}
+```
+
+#### TwilioWebhookReceived Example
+
+The `TwilioWebhookReceived` event is fired when a webhook is received from Twilio:
+
+```php
+namespace App\Listeners;
+
+use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
+use App\Models\SmsMessage;
+use App\Models\Conversation;
+
+class HandleTwilioWebhook
+{
+    public function handle(TwilioWebhookReceived $event)
+    {
+        // Example 1: Handle incoming SMS
+        if ($event->isInboundSms()) {
+            // Store the incoming message
+            $incomingSms = [
+                'from' => $event->payload['From'],
+                'body' => $event->payload['Body'],
+                'sid' => $event->payload['MessageSid'],
+            ];
+            
+            // Create or update a conversation
+            $conversation = Conversation::firstOrCreate(['phone_number' => $incomingSms['from']]);
+            $conversation->messages()->create([
+                'direction' => 'inbound',
+                'body' => $incomingSms['body'],
+                'message_sid' => $incomingSms['sid'],
+            ]);
+            
+            // Potentially trigger automated response
+            // ...
+        }
         
-        // You can perform additional actions here based on the message
+        // Example 2: Handle delivery status updates
+        if ($event->isMessageStatusUpdate()) {
+            $messageSid = $event->payload['MessageSid'];
+            $status = $event->getStatusType();
+            
+            // Update message status in your database
+            SmsMessage::where('message_sid', $messageSid)
+                ->update([
+                    'status' => $status,
+                    'status_updated_at' => now(),
+                ]);
+            
+            // If it's a failure, you might want to alert someone
+            if (in_array($status, ['failed', 'undelivered'])) {
+                // Notify admins or trigger a retry
+                // ...
+            }
+        }
+        
+        // Example 3: Handle voice calls with TwiML response
+        if ($event->isInboundVoiceCall()) {
+            // Generate TwiML response
+            return response(
+                '<?xml version="1.0" encoding="UTF-8"?>
+                <Response>
+                    <Say>Thank you for calling. Our representatives are currently busy.</Say>
+                    <Gather numDigits="1" timeout="10" action="/api/twilio/menu">
+                        <Say>Press 1 for sales, press 2 for support.</Say>
+                    </Gather>
+                </Response>',
+                200,
+                ['Content-Type' => 'text/xml']
+            );
+        }
     }
 }
 ```

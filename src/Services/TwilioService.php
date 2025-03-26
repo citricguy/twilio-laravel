@@ -3,6 +3,7 @@
 namespace Citricguy\TwilioLaravel\Services;
 
 use Citricguy\TwilioLaravel\Events\TwilioMessageQueued;
+use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
 use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioMessage;
 use Illuminate\Support\Facades\Log;
@@ -53,6 +54,26 @@ class TwilioService
     public function sendMessageNow(string $to, string $message, array $options = [])
     {
         try {
+            // Fire the sending event and allow for cancellation
+            $sendingEvent = new TwilioMessageSending($to, $message, $options);
+            event($sendingEvent);
+            
+            // Check if the message was cancelled
+            if ($sendingEvent->cancelled()) {
+                if (config('twilio-laravel.debug', false)) {
+                    Log::info('Twilio: Message cancelled', [
+                        'to' => $to,
+                        'reason' => $sendingEvent->cancellationReason(),
+                    ]);
+                }
+                
+                return [
+                    'status' => 'cancelled',
+                    'to' => $to,
+                    'reason' => $sendingEvent->cancellationReason(),
+                ];
+            }
+            
             $messageData = [
                 'body' => $message,
                 'to' => $to,
@@ -114,6 +135,26 @@ class TwilioService
      */
     public function queueMessage(string $to, string $message, array $options = [])
     {
+        // Fire the sending event and allow for cancellation
+        $sendingEvent = new TwilioMessageSending($to, $message, $options);
+        event($sendingEvent);
+        
+        // Check if the message was cancelled
+        if ($sendingEvent->cancelled()) {
+            if (config('twilio-laravel.debug', false)) {
+                Log::info('Twilio: Message cancelled', [
+                    'to' => $to,
+                    'reason' => $sendingEvent->cancellationReason(),
+                ]);
+            }
+            
+            return [
+                'status' => 'cancelled',
+                'to' => $to,
+                'reason' => $sendingEvent->cancellationReason(),
+            ];
+        }
+        
         $queueName = $options['queue'] ?? config('twilio-laravel.queue_name', 'default');
         $delay = $options['delay'] ?? null;
 
