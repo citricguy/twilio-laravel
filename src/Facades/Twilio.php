@@ -36,7 +36,7 @@ class Twilio extends Facade
      */
     public static function fake()
     {
-        $fake = new TwilioServiceFake();
+        $fake = new TwilioServiceFake;
 
         static::swap($fake);
 

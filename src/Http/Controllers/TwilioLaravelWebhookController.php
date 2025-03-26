@@ -4,8 +4,8 @@ namespace Citricguy\TwilioLaravel\Http\Controllers;
 
 use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 
 class TwilioLaravelWebhookController
 {
@@ -23,7 +23,7 @@ class TwilioLaravelWebhookController
         // Create and dispatch the event
         $event = new TwilioWebhookReceived($payload);
         $responses = event($event);
-        
+
         // Check if any listener returned a response
         if (is_array($responses)) {
             foreach ($responses as $response) {

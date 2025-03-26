@@ -57,7 +57,7 @@ class TwilioService
             // Fire the sending event and allow for cancellation
             $sendingEvent = new TwilioMessageSending($to, $message, $options);
             event($sendingEvent);
-            
+
             // Check if the message was cancelled
             if ($sendingEvent->cancelled()) {
                 if (config('twilio-laravel.debug', false)) {
@@ -66,14 +66,14 @@ class TwilioService
                         'reason' => $sendingEvent->cancellationReason(),
                     ]);
                 }
-                
+
                 return [
                     'status' => 'cancelled',
                     'to' => $to,
                     'reason' => $sendingEvent->cancellationReason(),
                 ];
             }
-            
+
             $messageData = [
                 'body' => $message,
                 'to' => $to,
@@ -138,7 +138,7 @@ class TwilioService
         // Fire the sending event and allow for cancellation
         $sendingEvent = new TwilioMessageSending($to, $message, $options);
         event($sendingEvent);
-        
+
         // Check if the message was cancelled
         if ($sendingEvent->cancelled()) {
             if (config('twilio-laravel.debug', false)) {
@@ -147,14 +147,14 @@ class TwilioService
                     'reason' => $sendingEvent->cancellationReason(),
                 ]);
             }
-            
+
             return [
                 'status' => 'cancelled',
                 'to' => $to,
                 'reason' => $sendingEvent->cancellationReason(),
             ];
         }
-        
+
         $queueName = $options['queue'] ?? config('twilio-laravel.queue_name', 'default');
         $delay = $options['delay'] ?? null;
 

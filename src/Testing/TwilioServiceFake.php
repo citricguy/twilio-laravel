@@ -28,9 +28,6 @@ class TwilioServiceFake extends TwilioService
     /**
      * Send an SMS message (fake implementation).
      *
-     * @param string $to
-     * @param string $message
-     * @param array $options
      * @return array
      */
     public function sendMessage(string $to, string $message, array $options = [])
@@ -41,9 +38,6 @@ class TwilioServiceFake extends TwilioService
     /**
      * Send an SMS message immediately (fake implementation).
      *
-     * @param string $to
-     * @param string $message
-     * @param array $options
      * @return array
      */
     public function sendMessageNow(string $to, string $message, array $options = [])
@@ -54,9 +48,6 @@ class TwilioServiceFake extends TwilioService
     /**
      * Queue an SMS message for sending (fake implementation).
      *
-     * @param string $to
-     * @param string $message
-     * @param array $options
      * @return array
      */
     public function queueMessage(string $to, string $message, array $options = [])
@@ -67,10 +58,10 @@ class TwilioServiceFake extends TwilioService
     /**
      * Record a message as sent.
      *
-     * @param string $type
-     * @param string $to
-     * @param string $message
-     * @param array $options
+     * @param  string  $type
+     * @param  string  $to
+     * @param  string  $message
+     * @param  array  $options
      * @return array
      */
     protected function recordMessage($type, $to, $message, $options)
@@ -80,11 +71,11 @@ class TwilioServiceFake extends TwilioService
             'to' => $to,
             'body' => $message,
             'options' => $options,
-            'messageSid' => 'FAKE_SID_' . count($this->messages),
+            'messageSid' => 'FAKE_SID_'.count($this->messages),
             'status' => $type === 'sent' ? 'sent' : 'queued',
             'segmentsCount' => ceil(mb_strlen($message) / 153),
         ];
-        
+
         // Fire appropriate event
         if ($type === 'queued') {
             event(new TwilioMessageQueued(
@@ -115,7 +106,6 @@ class TwilioServiceFake extends TwilioService
     /**
      * Assert if a message was sent based on a truth-test callback.
      *
-     * @param callable|null $callback
      * @return void
      */
     public function assertSent(?callable $callback = null)
@@ -126,12 +116,14 @@ class TwilioServiceFake extends TwilioService
 
         if ($callback === null) {
             PHPUnit::assertTrue(true);
+
             return;
         }
 
         foreach ($this->messages as $message) {
             if ($callback($message)) {
                 PHPUnit::assertTrue(true);
+
                 return;
             }
         }
@@ -142,7 +134,7 @@ class TwilioServiceFake extends TwilioService
     /**
      * Assert if a message was sent to the given recipient.
      *
-     * @param string $recipient
+     * @param  string  $recipient
      * @return void
      */
     public function assertSentTo($recipient)
@@ -155,14 +147,14 @@ class TwilioServiceFake extends TwilioService
     /**
      * Assert that a message was sent a specific number of times.
      *
-     * @param int $count
+     * @param  int  $count
      * @return void
      */
     public function assertSentCount($count)
     {
         PHPUnit::assertCount(
             $count, $this->messages,
-            "Expected {$count} messages to have been sent, but " . count($this->messages) . " were sent."
+            "Expected {$count} messages to have been sent, but ".count($this->messages).' were sent.'
         );
     }
 

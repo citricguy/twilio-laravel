@@ -47,9 +47,6 @@ class TwilioMessageSending
     /**
      * Create a new event instance.
      *
-     * @param  string  $to
-     * @param  string  $message
-     * @param  array   $options
      * @return void
      */
     public function __construct(string $to, string $message, array $options = [])
@@ -62,7 +59,6 @@ class TwilioMessageSending
     /**
      * Cancel the message.
      *
-     * @param  string|null  $reason
      * @return $this
      */
     public function cancel(?string $reason = null)

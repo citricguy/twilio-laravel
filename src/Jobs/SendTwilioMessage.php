@@ -58,7 +58,7 @@ class SendTwilioMessage implements ShouldQueue
         // One more chance to cancel before sending
         $sendingEvent = new TwilioMessageSending($this->to, $this->message, $this->options);
         event($sendingEvent);
-        
+
         // Check if the message was cancelled
         if ($sendingEvent->cancelled()) {
             if (config('twilio-laravel.debug', false)) {
@@ -67,9 +67,10 @@ class SendTwilioMessage implements ShouldQueue
                     'reason' => $sendingEvent->cancellationReason(),
                 ]);
             }
+
             return;
         }
-        
+
         $twilioService->sendMessageNow($this->to, $this->message, $this->options);
     }
 }
