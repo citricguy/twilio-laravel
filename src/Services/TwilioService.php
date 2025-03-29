@@ -95,6 +95,11 @@ class TwilioService
                 $messageData['mediaUrl'] = $options['mediaUrls'];
             }
 
+            // Add status callback URL if provided
+            if (! empty($options['statusCallback'])) {
+                $messageData['statusCallback'] = $options['statusCallback'];
+            }
+
             // Debug logging
             if (config('twilio-laravel.debug', false)) {
                 Log::debug('Twilio: Sending message', ['to' => $to, 'options' => $options]);

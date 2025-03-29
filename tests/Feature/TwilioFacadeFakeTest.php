@@ -109,3 +109,18 @@ test('it properly handles options', function () {
                $message->options['mediaUrls'][0] === 'https://example.com/image.jpg';
     });
 });
+
+test('it properly handles statusCallback option', function () {
+    // Act
+    Twilio::sendMessage(
+        '+1234567890',
+        'Test message with status callback',
+        ['statusCallback' => 'https://example.com/status']
+    );
+
+    // Assert
+    Twilio::assertSent(function ($message) {
+        return $message->to === '+1234567890' &&
+               $message->options['statusCallback'] === 'https://example.com/status';
+    });
+});

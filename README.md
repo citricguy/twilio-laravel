@@ -28,6 +28,10 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
     - [How Responses Work](#how-responses-work)
   - [Events](#events)
     - [Message Events](#message-events)
+      - [TwilioMessageSending Example](#twiliomessagesending-example)
+      - [TwilioMessageQueued Example](#twiliomessagequeued-example)
+      - [TwilioMessageSent Example](#twiliomessagesent-example)
+      - [TwilioWebhookReceived Example](#twiliowebhookreceived-example)
   - [Integration Guide](#integration-guide)
     - [Setting Up Event Listeners](#setting-up-event-listeners)
     - [Handling Immediate Responses](#handling-immediate-responses)
@@ -113,6 +117,13 @@ Twilio::sendMessage(
     '+1234567890',
     'Check out this image!',
     ['mediaUrls' => ['https://example.com/image.jpg']]
+);
+
+// With status callback URL
+Twilio::sendMessage(
+    '+1234567890',
+    'Track message delivery!',
+    ['statusCallback' => 'https://yourdomain.com/webhooks/twilio/status-updates']
 );
 
 // Custom queue options

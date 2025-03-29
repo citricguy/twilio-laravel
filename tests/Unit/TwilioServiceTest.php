@@ -192,3 +192,41 @@ it('handles MMS with media URLs', function () {
         'mediaUrls' => ['https://example.com/image.jpg'],
     ]);
 });
+
+it('allows setting statusCallback URL', function () {
+    config(['twilio-laravel.queue_messages' => false]);
+    config(['twilio-laravel.from' => '+19876543210']);
+
+    $service = new TwilioService;
+
+    // Create a mock MessageInstance
+    $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->sid = 'SM123456';
+    $mockMessage->status = 'sent';
+
+    // Create a mock MessageList expecting statusCallback
+    $mockMessageList = Mockery::mock(MessageList::class);
+    $mockMessageList->shouldReceive('create')
+        ->once()
+        ->with('+12345678901', [
+            'body' => 'Test message with status callback',
+            'to' => '+12345678901',
+            'from' => '+19876543210',
+            'statusCallback' => 'https://example.com/status-callback',
+        ])
+        ->andReturn($mockMessage);
+
+    // Mock the Twilio client
+    $mockClient = Mockery::mock(Client::class);
+    $mockClient->messages = $mockMessageList;
+
+    // Inject the mock client
+    $reflectionProperty = new \ReflectionProperty($service, 'client');
+    $reflectionProperty->setAccessible(true);
+    $reflectionProperty->setValue($service, $mockClient);
+
+    // Send a message with statusCallback
+    $service->sendMessage('+12345678901', 'Test message with status callback', [
+        'statusCallback' => 'https://example.com/status-callback',
+    ]);
+});
