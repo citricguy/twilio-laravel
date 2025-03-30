@@ -17,6 +17,7 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
   - [📋 Table of Contents](#-table-of-contents)
   - [Installation](#installation)
   - [Configuration](#configuration)
+    - [Sender Configuration](#sender-configuration)
     - [Debug Mode](#debug-mode)
   - [Usage](#usage)
     - [Sending SMS Messages](#sending-sms-messages)
@@ -84,6 +85,31 @@ TWILIO_TOKEN=your-twilio-auth-token
 TWILIO_FROM=+1234567890
 TWILIO_WEBHOOK_PATH=/api/twilio/webhook
 TWILIO_DEBUG=false
+# If using a Messaging Service instead of a sender phone number
+TWILIO_MESSAGING_SERVICE_SID=your-messaging-service-sid
+```
+
+### Sender Configuration
+
+When sending messages, the package determines the sender using the following priority order:
+
+1. The `from` parameter in the options array passed to the `sendMessage` method
+2. The messaging service SID in the options array (`messagingServiceSid`)
+3. The messaging service SID from your config (set via `TWILIO_MESSAGING_SERVICE_SID` in .env)
+4. The default sender number from your config (set via `TWILIO_FROM` in .env)
+
+If none of these are provided, an exception will be thrown indicating that no valid sender is configured.
+
+Example usage with different sender options:
+```php
+// Uses the 'from' parameter directly
+Twilio::sendMessage('+1234567890', 'Message with custom from', ['from' => '+15551234567']);
+
+// Uses a specific messaging service
+Twilio::sendMessage('+1234567890', 'Message via messaging service', ['messagingServiceSid' => 'MG123456789']);
+
+// Uses the default configuration from .env
+Twilio::sendMessage('+1234567890', 'Message with default sender');
 ```
 
 ### Debug Mode
