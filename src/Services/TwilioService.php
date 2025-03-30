@@ -96,8 +96,8 @@ class TwilioService
             }
 
             // Add status callback URL if provided
-            if (! empty($options['statusCallback'])) {
-                $messageData['statusCallback'] = $options['statusCallback'];
+            if (! empty($options['StatusCallback'])) {
+                $messageData['StatusCallback'] = $options['StatusCallback'];
             }
 
             // Debug logging
