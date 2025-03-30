@@ -123,7 +123,7 @@ Twilio::sendMessage(
 Twilio::sendMessage(
     '+1234567890',
     'Track message delivery!',
-    ['StatusCallback' => 'https://yourdomain.com/webhooks/twilio/status-updates']
+    ['statusCallback' => 'https://yourdomain.com/webhooks/twilio/status-updates']
 );
 
 // Custom queue options

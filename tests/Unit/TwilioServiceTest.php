@@ -193,7 +193,7 @@ it('handles MMS with media URLs', function () {
     ]);
 });
 
-it('allows setting StatusCallback URL', function () {
+it('allows setting statusCallback URL', function () {
     config(['twilio-laravel.queue_messages' => false]);
     config(['twilio-laravel.from' => '+19876543210']);
 
@@ -204,7 +204,7 @@ it('allows setting StatusCallback URL', function () {
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
-    // Create a mock MessageList expecting StatusCallback
+    // Create a mock MessageList expecting statusCallback
     $mockMessageList = Mockery::mock(MessageList::class);
     $mockMessageList->shouldReceive('create')
         ->once()
@@ -212,7 +212,7 @@ it('allows setting StatusCallback URL', function () {
             'body' => 'Test message with status callback',
             'to' => '+12345678901',
             'from' => '+19876543210',
-            'StatusCallback' => 'https://example.com/status-callback',
+            'statusCallback' => 'https://example.com/status-callback',
         ])
         ->andReturn($mockMessage);
 
@@ -225,8 +225,8 @@ it('allows setting StatusCallback URL', function () {
     $reflectionProperty->setAccessible(true);
     $reflectionProperty->setValue($service, $mockClient);
 
-    // Send a message with StatusCallback
+    // Send a message with statusCallback
     $service->sendMessage('+12345678901', 'Test message with status callback', [
-        'StatusCallback' => 'https://example.com/status-callback',
+        'statusCallback' => 'https://example.com/status-callback',
     ]);
 });

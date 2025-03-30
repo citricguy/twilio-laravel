@@ -104,23 +104,23 @@ it('can set custom from number per message', function () {
     ]);
 });
 
-it('can set StatusCallback URL for each message', function () {
-    // Mock the TwilioService to verify StatusCallback
+it('can set statusCallback URL for each message', function () {
+    // Mock the TwilioService to verify statusCallback
     $mockService = Mockery::mock(TwilioService::class);
     $mockService->shouldReceive('sendMessageNow')
         ->once()
         ->withArgs(function ($to, $message, $options) {
             return $to === '+12345678901' &&
                    $message === 'With status callback' &&
-                   $options['StatusCallback'] === 'https://example.com/callbacks/status';
+                   $options['statusCallback'] === 'https://example.com/callbacks/status';
         })
         ->andReturn(['status' => 'sent']);
 
     // Replace the service in the container
     app()->instance('twilio-sms', $mockService);
 
-    // Send with StatusCallback
+    // Send with statusCallback
     Twilio::sendMessageNow('+12345678901', 'With status callback', [
-        'StatusCallback' => 'https://example.com/callbacks/status',
+        'statusCallback' => 'https://example.com/callbacks/status',
     ]);
 });
