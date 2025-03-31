@@ -193,7 +193,7 @@ it('handles MMS with media URLs', function () {
     ]);
 });
 
-it('allows setting statusCallback URL', function () {
+it('allows setting StatusCallback URL', function () {
     config(['twilio-laravel.queue_messages' => false]);
     config(['twilio-laravel.from' => '+19876543210']);
 
@@ -225,7 +225,7 @@ it('allows setting statusCallback URL', function () {
     $reflectionProperty->setAccessible(true);
     $reflectionProperty->setValue($service, $mockClient);
 
-    // Send a message with statusCallback
+    // Send a message with StatusCallback
     $service->sendMessage('+12345678901', 'Test message with status callback', [
         'statusCallback' => 'https://example.com/status-callback',
     ]);

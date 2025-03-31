@@ -98,6 +98,8 @@ class TwilioService
             // Add status callback URL if provided
             if (! empty($options['statusCallback'])) {
                 $messageData['statusCallback'] = $options['statusCallback'];
+            } elseif (! empty($options['metadata']['statusCallback'])) {
+                $messageData['statusCallback'] = $options['metadata']['statusCallback'];
             }
 
             // Debug logging
@@ -108,7 +110,7 @@ class TwilioService
             // Send the message
             $messageResponse = $this->client->messages->create($to, $messageData);
 
-            // Ensure body is string safe for calculation
+            // Calculate segments count (for logging/events)
             $segmentsCount = ceil(mb_strlen((string) $messageData['body']) / 153);
 
             // Fire the sent event
