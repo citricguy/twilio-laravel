@@ -5,7 +5,10 @@ namespace Citricguy\TwilioLaravel;
 use Citricguy\TwilioLaravel\Console\VerifyWebhookSetupCommand;
 use Citricguy\TwilioLaravel\Http\Controllers\TwilioLaravelWebhookController;
 use Citricguy\TwilioLaravel\Http\Middleware\VerifyTwilioWebhook;
+use Citricguy\TwilioLaravel\Notifications\TwilioSmsChannel;
 use Citricguy\TwilioLaravel\Services\TwilioService;
+use Illuminate\Notifications\ChannelManager;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +27,9 @@ class TwilioLaravelServiceProvider extends ServiceProvider
                 VerifyWebhookSetupCommand::class,
             ]);
         }
+
+        // Register the notification channel
+        $this->registerNotificationChannel();
     }
 
     public function register()
@@ -52,5 +58,17 @@ class TwilioLaravelServiceProvider extends ServiceProvider
                 VerifyTwilioWebhook::class,
             ],
         ];
+    }
+
+    /**
+     * Register the Twilio notification channel.
+     */
+    private function registerNotificationChannel(): void
+    {
+        Notification::resolved(function (ChannelManager $service) {
+            $service->extend(config('twilio-laravel.notifications.channel_name', 'twilioSms'), function ($app) {
+                return new TwilioSmsChannel;
+            });
+        });
     }
 }

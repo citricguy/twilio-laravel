@@ -91,4 +91,17 @@ return [
     |
     */
     'debug' => env('TWILIO_DEBUG', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notification Channel Settings
+    |--------------------------------------------------------------------------
+    |
+    | Settings for the Twilio SMS notification channel.
+    |
+    */
+    'notifications' => [
+        // The channel name used when registering the channel
+        'channel_name' => 'twilioSms',
+    ],
 ];

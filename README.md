@@ -55,6 +55,14 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
       - [Option 1: Dispatching the Event Directly](#option-1-dispatching-the-event-directly)
       - [Option 2: Testing the HTTP Endpoint](#option-2-testing-the-http-endpoint)
       - [Option 3: Integration Testing with Response Expectations](#option-3-integration-testing-with-response-expectations)
+  - [Using the Notification Channel](#using-the-notification-channel)
+    - [Configuring Your Notifiable Model](#configuring-your-notifiable-model)
+    - [Creating a Notification](#creating-a-notification)
+    - [Sending SMS Notifications](#sending-sms-notifications)
+    - [Sending MMS Notifications](#sending-mms-notifications)
+    - [Additional Options](#additional-options)
+    - [Simple String Responses](#simple-string-responses)
+    - [Event Tracking](#event-tracking)
   - [Security](#security)
   - [Credits](#credits)
   - [License](#license)
@@ -913,6 +921,125 @@ public function test_voice_call_returns_twiml()
     $response->assertStatus(200);
     $response->assertHeader('Content-Type', 'text/xml');
     $response->assertSee('<Response>');
+}
+```
+
+## Using the Notification Channel
+
+This package includes a Laravel Notification Channel for sending SMS and MMS through Twilio. This follows Laravel's notification system patterns and allows for easy integration with your existing notification architecture.
+
+### Configuring Your Notifiable Model
+
+Ensure your model includes a method to determine the phone number to receive SMS:
+
+```php
+public function routeNotificationForTwilioSms($notification)
+{
+    return $this->phone_number; // Replace with your phone field
+}
+```
+
+### Creating a Notification
+
+Create a notification with a `toTwilioSms` method:
+
+```php
+namespace App\Notifications;
+
+use Citricguy\TwilioLaravel\Notifications\TwilioSmsMessage;
+use Illuminate\Notifications\Notification;
+
+class VerificationCodeNotification extends Notification
+{
+    protected $code;
+
+    public function __construct($code)
+    {
+        $this->code = $code;
+    }
+
+    public function via($notifiable)
+    {
+        return ['twilioSms'];
+    }
+
+    public function toTwilioSms($notifiable)
+    {
+        return (new TwilioSmsMessage)
+            ->content("Your verification code is {$this->code}")
+            ->from('+1234567890'); // Optional custom sender
+    }
+}
+```
+
+### Sending SMS Notifications
+
+You can send notifications using Laravel's built-in notification system:
+
+```php
+$user->notify(new VerificationCodeNotification('1234'));
+```
+
+### Sending MMS Notifications
+
+You can include media in your notifications by using the `mediaUrls` method:
+
+```php
+public function toTwilioSms($notifiable)
+{
+    return (new TwilioSmsMessage)
+        ->content('Check out this image!')
+        ->mediaUrls(['https://example.com/image.jpg']);
+}
+```
+
+### Additional Options
+
+The `TwilioSmsMessage` class provides a fluent interface for setting various options:
+
+```php
+public function toTwilioSms($notifiable)
+{
+    return (new TwilioSmsMessage)
+        ->content('Your message here')
+        ->from('+1234567890')                                // Custom sender number
+        ->messagingService('MGXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') // Or use messaging service
+        ->mediaUrls(['https://example.com/image.jpg'])       // For MMS
+        ->statusCallback('https://example.com/webhook/status') // Status callback URL
+        ->options([                                         // Additional custom options
+            'delay' => 30, // delay in seconds
+            'queue' => 'high-priority',
+        ]);
+}
+```
+
+### Simple String Responses
+
+For simple notifications, you can return a string directly:
+
+```php
+public function toTwilioSms($notifiable)
+{
+    return "Your verification code is {$this->code}";
+}
+```
+
+### Event Tracking
+
+When sending SMS through the notification channel, the package automatically adds notification metadata to the event options, allowing you to identify messages sent through the notification system in your event listeners:
+
+```php
+// In your event listener
+public function handle(TwilioMessageSent $event)
+{
+    if (isset($event->options['_notification'])) {
+        // This message was sent via a notification
+        $notificationType = $event->options['_notification']['type'];
+        $notifiableType = $event->options['_notification']['notifiable'];
+        $notifiableId = $event->options['_notification']['notifiable_id'];
+        
+        // Do notification-specific processing
+    }
 }
 ```
 
