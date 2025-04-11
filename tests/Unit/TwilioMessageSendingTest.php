@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
 
+beforeEach(function() {
+    // Set test credentials to prevent client creation error
+    config(['twilio-laravel.account_sid' => 'test_sid']);
+    config(['twilio-laravel.auth_token' => 'test_token']);
+});
+
 it('can cancel a message before sending', function () {
     // Fake the event dispatcher to track dispatched events
     Event::fake([TwilioMessageSent::class]);

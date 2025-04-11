@@ -4,104 +4,81 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Twilio Credentials
+    | Twilio API Credentials
     |--------------------------------------------------------------------------
     |
-    | These values are your Twilio Account SID and Auth Token. It’s best practice
-    | to store these in your .env file so they’re not hard-coded into your codebase.
+    | Your Twilio Account SID and Auth Token from your Twilio dashboard
     |
     */
-    'account_sid' => env('TWILIO_SID', 'your-twilio-sid'),
-    'auth_token' => env('TWILIO_TOKEN', 'your-twilio-auth-token'),
+    'account_sid' => env('TWILIO_ACCOUNT_SID'),
+    'auth_token' => env('TWILIO_AUTH_TOKEN'),
 
     /*
     |--------------------------------------------------------------------------
-    | Default Sender
+    | Twilio Sender Phone Number or Messaging Service SID
     |--------------------------------------------------------------------------
     |
-    | This is the default phone number that will be used when sending messages.
-    | You can override it on a per-message basis if needed.
+    | This is the default number that will be used to send messages from or
+    | your Messaging Service SID if using a messaging service.
     |
     */
-    'from' => env('TWILIO_FROM', '+1234567890'),
+    'from' => env('TWILIO_FROM'),
+    'messaging_service_sid' => env('TWILIO_MESSAGING_SERVICE_SID'),
 
     /*
     |--------------------------------------------------------------------------
-    | Messaging Service SID (Optional)
+    | Webhook Authentication
     |--------------------------------------------------------------------------
     |
-    | If you’re using a messaging service in Twilio, you can specify its SID here.
-    | Otherwise, you can leave it as null.
+    | Set this to false if you don't want to authenticate incoming Twilio webhook
+    | requests. The default is true and the middleware will validate that requests
+    | are genuinely from Twilio using the signature in the request header.
     |
     */
-    'messaging_service_sid' => env('TWILIO_MESSAGING_SERVICE_SID', null),
-
-    /*
-    |--------------------------------------------------------------------------
-    | API Version
-    |--------------------------------------------------------------------------
-    |
-    | This specifies the Twilio API version you want to use. Generally, the default
-    | version is fine unless you have a specific need to change it.
-    |
-    */
-    'api_version' => '2010-04-01',
-
-    /*
-    |--------------------------------------------------------------------------
-    | Webhook Validation
-    |--------------------------------------------------------------------------
-    |
-    | Enable or disable the Twilio webhook signature validation. This can be useful
-    | if you need to bypass validation in certain development environments.
-    |
-    */
-    'validate_webhook' => env('TWILIO_VALIDATE_WEBHOOK', true),
+    'validate_webhook_signature' => env('TWILIO_VALIDATE_WEBHOOK_SIGNATURE', true),
 
     /*
     |--------------------------------------------------------------------------
     | Webhook Path
     |--------------------------------------------------------------------------
     |
-    | This is the URL path where Twilio webhooks will be received.
-    | For example: 'webhooks/twilio' would be accessed at yourdomain.com/webhooks/twilio
+    | The URI path where Twilio webhooks will be received
     |
     */
-    'webhook_path' => env('TWILIO_WEBHOOK_PATH', '/api/twilio/webhook'),
+    'webhook_path' => env('TWILIO_WEBHOOK_PATH', 'webhooks/twilio'),
 
     /*
     |--------------------------------------------------------------------------
-    | Message Queue Settings
+    | Queue Configuration
     |--------------------------------------------------------------------------
     |
-    | These settings determine how Twilio messages are queued.
+    | Messages and calls are queued by default for better performance.
+    | You can disable queuing or customize the queue name.
     |
     */
     'queue_messages' => env('TWILIO_QUEUE_MESSAGES', true),
-    'queue_name' => env('TWILIO_QUEUE', 'default'),
-    'queue_retries' => env('TWILIO_QUEUE_RETRIES', 3),
+    'queue_name' => env('TWILIO_QUEUE_NAME', 'default'),
 
     /*
     |--------------------------------------------------------------------------
     | Debug Mode
     |--------------------------------------------------------------------------
     |
-    | Enable debug mode to log additional information during development. This
-    | setting is useful for troubleshooting issues.
+    | When enabled, detailed logs about API calls and message/call processing will be output
     |
     */
     'debug' => env('TWILIO_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------
-    | Notification Channel Settings
+    | Notification Channel Configuration
     |--------------------------------------------------------------------------
     |
-    | Settings for the Twilio SMS notification channel.
+    | Configure the names of the notification channels
     |
     */
     'notifications' => [
-        // The channel name used when registering the channel
-        'channel_name' => 'twilioSms',
+        'channel_name' => 'twilioSms',     // SMS notifications channel
+        'call_channel_name' => 'twilioCall',  // Call notifications channel
     ],
 ];

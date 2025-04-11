@@ -2,9 +2,13 @@
 
 namespace Citricguy\TwilioLaravel\Services;
 
+use Citricguy\TwilioLaravel\Events\TwilioCallQueued;
+use Citricguy\TwilioLaravel\Events\TwilioCallSending;
+use Citricguy\TwilioLaravel\Events\TwilioCallSent;
 use Citricguy\TwilioLaravel\Events\TwilioMessageQueued;
 use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
 use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
+use Citricguy\TwilioLaravel\Jobs\SendTwilioCall;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioMessage;
 use Illuminate\Support\Facades\Log;
 use Twilio\Rest\Client as TwilioClient;
@@ -44,6 +48,24 @@ class TwilioService
         }
 
         return $this->sendMessageNow($to, $message, $options);
+    }
+
+    /**
+     * Make a voice call.
+     *
+     * @param  string  $to  The recipient phone number
+     * @param  string  $url  The TwiML URL for the call
+     * @param  array  $options  Additional options for the call
+     * @return mixed
+     */
+    public function makeCall(string $to, string $url, array $options = [])
+    {
+        // Use the queue if enabled in config
+        if (config('twilio-laravel.queue_messages', true)) {
+            return $this->queueCall($to, $url, $options);
+        }
+
+        return $this->makeCallNow($to, $url, $options);
     }
 
     /**
@@ -136,6 +158,104 @@ class TwilioService
     }
 
     /**
+     * Make a voice call immediately.
+     *
+     * @param  string  $to  The recipient phone number
+     * @param  string  $url  The TwiML URL for the call
+     * @param  array  $options  Additional options for the call
+     * @return mixed
+     */
+    public function makeCallNow(string $to, string $url, array $options = [])
+    {
+        try {
+            // Fire the sending event and allow for cancellation
+            $sendingEvent = new TwilioCallSending($to, $url, $options);
+            event($sendingEvent);
+
+            // Check if the call was cancelled
+            if ($sendingEvent->cancelled()) {
+                if (config('twilio-laravel.debug', false)) {
+                    Log::info('Twilio: Call cancelled', [
+                        'to' => $to,
+                        'reason' => $sendingEvent->cancellationReason(),
+                    ]);
+                }
+
+                return [
+                    'status' => 'cancelled',
+                    'to' => $to,
+                    'reason' => $sendingEvent->cancellationReason(),
+                ];
+            }
+
+            $callData = [
+                'url' => $url,
+                'to' => $to,
+            ];
+
+            // Validate and set sender
+            if (! empty($options['from'])) {
+                $callData['from'] = $options['from'];
+            } elseif (! empty(config('twilio-laravel.from'))) {
+                $callData['from'] = config('twilio-laravel.from');
+            } else {
+                throw new \Exception('No valid sender configured for Twilio.');
+            }
+
+            // Add status callback URL if provided
+            if (! empty($options['statusCallback'])) {
+                $callData['statusCallback'] = $options['statusCallback'];
+            }
+
+            // Add status callback events if provided
+            if (! empty($options['statusCallbackEvent'])) {
+                $callData['statusCallbackEvent'] = $options['statusCallbackEvent'];
+            }
+
+            // Add recording options if provided
+            if (isset($options['record'])) {
+                $callData['record'] = $options['record'] ? 'true' : 'false';
+            }
+
+            // Add timeout if provided
+            if (! empty($options['timeout'])) {
+                $callData['timeout'] = $options['timeout'];
+            }
+
+            // Debug logging
+            if (config('twilio-laravel.debug', false)) {
+                Log::debug('Twilio: Making call', ['to' => $to, 'options' => $options]);
+            }
+
+            // Make the call
+            $callResponse = $this->client->calls->create($to, $callData);
+
+            // Fire the sent event
+            event(new TwilioCallSent(
+                $callResponse->sid,
+                $to,
+                $url,
+                $callResponse->status,
+                $options
+            ));
+
+            return [
+                'status' => 'initiated',
+                'to' => $to,
+                'callSid' => $callResponse->sid,
+            ];
+        } catch (\Exception $e) {
+            if (config('twilio-laravel.debug', false)) {
+                Log::error('Twilio: Failed to make call', [
+                    'error' => $e->getMessage(),
+                    'to' => $to,
+                ]);
+            }
+            throw $e;
+        }
+    }
+
+    /**
      * Queue an SMS message for sending.
      *
      * @return array
@@ -187,6 +307,64 @@ class TwilioService
             $message,
             'queued',
             $segmentsCount,
+            $options
+        ));
+
+        return ['status' => 'queued', 'to' => $to];
+    }
+
+    /**
+     * Queue a voice call for sending.
+     *
+     * @param  string  $to  The recipient phone number
+     * @param  string  $url  The TwiML URL for the call
+     * @param  array  $options  Additional options for the call
+     * @return array
+     */
+    public function queueCall(string $to, string $url, array $options = [])
+    {
+        // Fire the sending event and allow for cancellation
+        $sendingEvent = new TwilioCallSending($to, $url, $options);
+        event($sendingEvent);
+
+        // Check if the call was cancelled
+        if ($sendingEvent->cancelled()) {
+            if (config('twilio-laravel.debug', false)) {
+                Log::info('Twilio: Call cancelled', [
+                    'to' => $to,
+                    'reason' => $sendingEvent->cancellationReason(),
+                ]);
+            }
+
+            return [
+                'status' => 'cancelled',
+                'to' => $to,
+                'reason' => $sendingEvent->cancellationReason(),
+            ];
+        }
+
+        // Set queue name and delay
+        $queueName = $options['queue'] ?? config('twilio-laravel.queue_name', 'default');
+        $delay = $options['delay'] ?? null;
+
+        // Create job
+        $job = new SendTwilioCall($to, $url, $options);
+
+        // Queue with optional delay
+        if ($delay) {
+            $job->delay($delay)->onQueue($queueName);
+        } else {
+            $job->onQueue($queueName);
+        }
+
+        // Dispatch the job
+        dispatch($job);
+
+        // Fire the queued event
+        event(new TwilioCallQueued(
+            $to,
+            $url,
+            'queued',
             $options
         ));
 
