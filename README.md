@@ -9,7 +9,7 @@
   </a>
 </p>
 
-A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and webhooks. This package leverages the official Twilio PHP SDK and adheres to Laravel conventions, providing a seamless, queued, and event-driven solution for sending messages and processing incoming Twilio callbacks.
+A Laravel package to integrate Twilio for SMS/MMS messaging, voice calls, notifications, and webhooks. This package leverages the official Twilio PHP SDK and adheres to Laravel conventions, providing a seamless, queued, and event-driven solution for sending messages, making calls, and processing incoming Twilio callbacks.
 
 ## 📋 Table of Contents
 
@@ -19,9 +19,11 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
   - [Configuration](#configuration)
     - [Sender Configuration](#sender-configuration)
     - [Debug Mode](#debug-mode)
+    - [Notification Channel Configuration](#notification-channel-configuration)
   - [Usage](#usage)
     - [Sending SMS Messages](#sending-sms-messages)
       - [Message Queuing](#message-queuing)
+    - [Making Voice Calls](#making-voice-calls)
   - [Working with Webhooks](#working-with-webhooks)
     - [Webhook Types](#webhook-types)
     - [Webhook Helper Methods](#webhook-helper-methods)
@@ -32,6 +34,8 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
       - [TwilioMessageSending Example](#twiliomessagesending-example)
       - [TwilioMessageQueued Example](#twiliomessagequeued-example)
       - [TwilioMessageSent Example](#twiliomessagesent-example)
+    - [Call Events](#call-events)
+      - [TwilioCallSending Example](#twiliocallsending-example)
       - [TwilioWebhookReceived Example](#twiliowebhookreceived-example)
   - [Integration Guide](#integration-guide)
     - [Setting Up Event Listeners](#setting-up-event-listeners)
@@ -51,6 +55,7 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
     - [Webhook Validation Explained](#webhook-validation-explained)
   - [Testing](#testing)
     - [Faking the Twilio Facade](#faking-the-twilio-facade)
+    - [Testing Voice Calls](#testing-voice-calls)
     - [Testing Your Webhook Handlers](#testing-your-webhook-handlers)
       - [Option 1: Dispatching the Event Directly](#option-1-dispatching-the-event-directly)
       - [Option 2: Testing the HTTP Endpoint](#option-2-testing-the-http-endpoint)
@@ -63,6 +68,12 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and 
     - [Additional Options](#additional-options)
     - [Simple String Responses](#simple-string-responses)
     - [Event Tracking](#event-tracking)
+  - [Using the Call Notification Channel](#using-the-call-notification-channel)
+    - [Configuring Your Notifiable Model](#configuring-your-notifiable-model-1)
+    - [Creating a Call Notification](#creating-a-call-notification)
+    - [Sending Call Notifications](#sending-call-notifications)
+    - [Additional Call Options](#additional-call-options)
+    - [Simple String URL Responses](#simple-string-url-responses)
   - [Security](#security)
   - [Credits](#credits)
   - [License](#license)
@@ -124,6 +135,23 @@ Twilio::sendMessage('+1234567890', 'Message with default sender');
 
 The `TWILIO_DEBUG` environment variable can be used to enable or disable debug mode. When debug mode is enabled (`TWILIO_DEBUG=true`), additional logging and debugging information will be available to help troubleshoot issues. It is recommended to keep debug mode disabled (`TWILIO_DEBUG=false`) in production environments.
 
+### Notification Channel Configuration
+
+The package registers two notification channels:
+
+1. `twilioSms` - For sending SMS/MMS notifications
+2. `twilioCall` - For initiating voice calls
+
+You can customize the channel names in the configuration:
+
+```php
+// In config/twilio-laravel.php
+'notifications' => [
+    'channel_name' => 'twilioSms',     // SMS notifications channel
+    'call_channel_name' => 'twilioCall',  // Call notifications channel
+],
+```
+
 ## Usage
 
 ### Sending SMS Messages
@@ -182,6 +210,63 @@ By default, all messages are queued for sending. This behavior can be configured
 // Set a custom queue name
 'queue_name' => 'twilio',
 ```
+
+### Making Voice Calls
+
+You can initiate voice calls using the `Twilio` facade:
+
+```php
+use Citricguy\TwilioLaravel\Facades\Twilio;
+
+// Basic voice call - requires a URL that returns TwiML instructions
+Twilio::makeCall('+1234567890', 'https://example.com/twiml');
+
+// With custom from number
+Twilio::makeCall(
+    '+1234567890',
+    'https://example.com/twiml',
+    ['from' => '+1987654321']
+);
+
+// Make an immediate call (bypass queue)
+Twilio::makeCallNow('+1234567890', 'https://example.com/twiml');
+
+// With status callback URL
+Twilio::makeCall(
+    '+1234567890',
+    'https://example.com/twiml',
+    ['statusCallback' => 'https://yourdomain.com/webhooks/twilio/call-status']
+);
+
+// With status callback events
+Twilio::makeCall(
+    '+1234567890',
+    'https://example.com/twiml',
+    [
+        'statusCallback' => 'https://yourdomain.com/webhooks/twilio/call-status',
+        'statusCallbackEvent' => ['initiated', 'ringing', 'answered', 'completed']
+    ]
+);
+
+// Enable call recording
+Twilio::makeCall(
+    '+1234567890',
+    'https://example.com/twiml',
+    ['record' => true]
+);
+
+// Custom queue options
+Twilio::makeCall(
+    '+1234567890',
+    'https://example.com/twiml',
+    [
+        'queue' => 'high-priority',
+        'delay' => 30 // delay in seconds
+    ]
+);
+```
+
+Voice calls require a URL that returns TwiML instructions. The TwiML document controls what happens during the call (playing messages, gathering input, etc.). Your application is responsible for creating and serving these TwiML documents.
 
 ## Working with Webhooks
 
@@ -465,6 +550,74 @@ class LogTwilioMessageSent
     }
 }
 ```
+
+### Call Events
+
+| Event | Description | Properties |
+|-------|-------------|------------|
+| `TwilioCallSending` | Fired before a call is initiated - can be cancelled | `to`, `url`, `options` |
+| `TwilioCallQueued` | Fired when a call is queued | `to`, `url`, `status`, `options` |
+| `TwilioCallSent` | Fired when a call is successfully initiated | `callSid`, `to`, `url`, `status`, `options` |
+
+You can listen for these events in your `EventServiceProvider`:
+
+```php
+protected $listen = [
+    \Citricguy\TwilioLaravel\Events\TwilioCallSending::class => [
+        \App\Listeners\ValidateCallBeforeInitiating::class,
+    ],
+    \Citricguy\TwilioLaravel\Events\TwilioCallSent::class => [
+        \App\Listeners\LogTwilioCallSent::class,
+    ],
+    \Citricguy\TwilioLaravel\Events\TwilioCallQueued::class => [
+        \App\Listeners\LogTwilioCallQueued::class,
+    ],
+];
+```
+
+#### TwilioCallSending Example
+
+Similar to message sending, the `TwilioCallSending` event allows you to implement validation logic before a call is initiated:
+
+```php
+namespace App\Listeners;
+
+use Citricguy\TwilioLaravel\Events\TwilioCallSending;
+use App\Models\BlockedNumber;
+use App\Services\PhoneNumberService;
+
+class ValidateCallBeforeInitiating
+{
+    protected $phoneNumberService;
+    
+    public function __construct(PhoneNumberService $phoneNumberService)
+    {
+        $this->phoneNumberService = $phoneNumberService;
+    }
+    
+    public function handle(TwilioCallSending $event)
+    {
+        $to = $event->to;
+        
+        // Example: Check against database of blocked numbers
+        if (BlockedNumber::where('phone_number', $to)->exists()) {
+            return $event->cancel('Number is in blocked list');
+        }
+        
+        // Example: Check time restrictions
+        $currentHour = now()->hour;
+        if ($currentHour < 8 || $currentHour > 20) {
+            return $event->cancel('Calls are only allowed between 8 AM and 8 PM');
+        }
+    }
+}
+```
+
+When a call is cancelled:
+- The `makeCall` or `makeCallNow` method returns an array with:
+  - `status` => 'cancelled'
+  - `to` => the recipient number
+  - `reason` => the optional cancellation reason provided
 
 #### TwilioWebhookReceived Example
 
@@ -841,6 +994,37 @@ Twilio::assertNothingSent();
 
 This allows you to test code that uses the Twilio facade without actually sending messages or making API calls.
 
+### Testing Voice Calls
+
+During testing, you can use the fake Twilio implementation to verify calls:
+
+```php
+use Citricguy\TwilioLaravel\Facades\Twilio;
+
+// In your test method or setUp
+Twilio::fake();
+
+// Now any calls to Twilio::makeCall() won't actually call the Twilio API
+Twilio::makeCall('+1234567890', 'https://example.com/twiml');
+
+// You can make assertions on the calls that would have been made
+Twilio::assertCallMade(function ($call) {
+    return $call->to === '+1234567890' &&
+           $call->url === 'https://example.com/twiml';
+});
+
+// Assert a call was made to a specific number
+Twilio::assertCalledTo('+1234567890');
+
+// Assert a specific number of calls were made
+Twilio::assertCallCount(1);
+
+// Assert no calls were made
+Twilio::assertNoCalls();
+```
+
+This allows you to test code that initiates calls without actually making API calls to Twilio.
+
 ### Testing Your Webhook Handlers
 
 You can test your webhook handlers in several ways:
@@ -1040,6 +1224,87 @@ public function handle(TwilioMessageSent $event)
         
         // Do notification-specific processing
     }
+}
+```
+
+## Using the Call Notification Channel
+
+This package includes a Laravel Notification Channel for initiating voice calls through Twilio.
+
+### Configuring Your Notifiable Model
+
+Ensure your model includes a method to determine the phone number to receive calls:
+
+```php
+public function routeNotificationForTwilioCall($notification)
+{
+    return $this->phone_number; // Replace with your phone field
+}
+```
+
+### Creating a Call Notification
+
+Create a notification with a `toTwilioCall` method:
+
+```php
+namespace App\Notifications;
+
+use Citricguy\TwilioLaravel\Notifications\TwilioCallMessage;
+use Illuminate\Notifications\Notification;
+
+class EmergencyAlertNotification extends Notification
+{
+    public function via($notifiable)
+    {
+        return ['twilioCall'];
+    }
+
+    public function toTwilioCall($notifiable)
+    {
+        return (new TwilioCallMessage)
+            ->url('https://example.com/emergency-twiml')
+            ->from('+1234567890'); // Optional custom caller
+    }
+}
+```
+
+### Sending Call Notifications
+
+You can send notifications using Laravel's built-in notification system:
+
+```php
+$user->notify(new EmergencyAlertNotification());
+```
+
+### Additional Call Options
+
+The `TwilioCallMessage` class provides a fluent interface for setting various options:
+
+```php
+public function toTwilioCall($notifiable)
+{
+    return (new TwilioCallMessage)
+        ->url('https://example.com/twiml-instructions')
+        ->from('+1234567890')                               // Custom caller number
+        ->statusCallback('https://example.com/call-status')  // Status callback URL
+        ->statusCallbackEvent(['initiated', 'completed'])    // Which events to receive
+        ->record(true)                                       // Record the call
+        ->timeout(30)                                        // Call timeout in seconds
+        ->options([                                          // Additional custom options
+            'delay' => 30,     // delay in seconds
+            'queue' => 'high-priority',
+        ]);
+}
+```
+
+### Simple String URL Responses
+
+For simple notifications, you can return a string URL directly:
+
+```php
+public function toTwilioCall($notifiable)
+{
+    return "https://example.com/twiml-instructions";
 }
 ```
 
