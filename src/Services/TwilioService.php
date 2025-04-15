@@ -228,7 +228,12 @@ class TwilioService
             }
 
             // Make the call
-            $callResponse = $this->client->calls->create($to, $callData);
+            // Extract 'from' parameter and remove it from callData
+            $from = $callData['from'];
+            unset($callData['to'], $callData['from']);
+            
+            // Call with correct parameter order: to, from, options
+            $callResponse = $this->client->calls->create($to, $from, $callData);
 
             // Fire the sent event
             event(new TwilioCallSent(
