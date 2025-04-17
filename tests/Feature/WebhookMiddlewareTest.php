@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Config;
 use Mockery;
+use Symfony\Component\HttpFoundation\HeaderBag;
 
 it('passes validation with valid signature', function () {
     // Set test auth token
@@ -28,6 +29,8 @@ it('passes validation with valid signature', function () {
     $request->shouldReceive('isMethod')->with('post')->andReturn(true);
     $request->shouldReceive('post')->andReturn($params);
     $request->shouldReceive('header')->with('X-Twilio-Signature')->andReturn($validSignature);
+    $request->shouldReceive('getContent')->andReturn('');
+    $request->headers = new HeaderBag([]);
 
     // Middleware should pass this request through
     $middleware = new VerifyTwilioWebhook;
@@ -55,6 +58,10 @@ it('rejects invalid signature', function () {
     $request->shouldReceive('isMethod')->with('post')->andReturn(true);
     $request->shouldReceive('post')->andReturn($params);
     $request->shouldReceive('header')->with('X-Twilio-Signature')->andReturn($invalidSignature);
+    $request->shouldReceive('getContent')->andReturn('');
+    $request->shouldReceive('method')->andReturn('POST');
+    $request->shouldReceive('query')->andReturn([]);
+    $request->headers = new HeaderBag([]);
 
     // Middleware should abort with 403
     $middleware = new VerifyTwilioWebhook;

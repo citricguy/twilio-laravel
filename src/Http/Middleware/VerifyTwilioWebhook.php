@@ -49,10 +49,17 @@ class VerifyTwilioWebhook
 
         // Validate the request
         if (! $validator->validate($signature, $url, $params)) {
+            $rawBody = $request->getContent();
             Log::warning('Invalid Twilio webhook signature.', [
                 'url' => $url,
                 'signature' => $signature,
                 'is_valid' => false,
+                'params' => $params,
+                'headers' => $request->headers->all(),
+                'method' => $request->method(),
+                'raw_body' => $rawBody,
+                'query' => $request->query(),
+                'twilio_debug' => config('twilio-laravel.debug'),
             ]);
 
             abort(403, 'Invalid Twilio webhook signature.');

@@ -7,6 +7,7 @@ use Citricguy\TwilioLaravel\Http\Middleware\VerifyTwilioWebhook;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Mockery;
+use Symfony\Component\HttpFoundation\HeaderBag;
 
 /**
  * Security tests for Twilio webhook handling
@@ -97,6 +98,11 @@ it('rejects requests with manipulated urls', function () {
     $request->shouldReceive('isMethod')->with('post')->andReturn(true);
     $request->shouldReceive('post')->andReturn($params);
     $request->shouldReceive('header')->with('X-Twilio-Signature')->andReturn($validSignature);
+    $request->shouldReceive('getContent')->andReturn('');
+    $request->shouldReceive('method')->andReturn('POST');
+    $request->shouldReceive('query')->andReturn([]);
+
+    $request->headers = new HeaderBag([]);
 
     // This is the key part - fullUrl() returns a different URL than what was used to generate the signature
     $request->shouldReceive('fullUrl')->andReturn('https://manipulated-domain.com'.$webhookPath);
