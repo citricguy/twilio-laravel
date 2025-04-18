@@ -103,3 +103,25 @@ test('it properly handles call options', function () {
                $call->options['statusCallback'] === 'https://example.com/status';
     });
 });
+
+test('it fires TwilioCallSending and can be cancelled', function () {
+    $fired = false;
+    \Illuminate\Support\Facades\Event::listen(\Citricguy\TwilioLaravel\Events\TwilioCallSending::class, function ($event) use (&$fired) {
+        $fired = true;
+        $event->cancel('Testing cancel');
+    });
+
+    $result = \Citricguy\TwilioLaravel\Facades\Twilio::makeCall('+1234567890', 'https://example.com/twiml');
+    expect($fired)->toBeTrue();
+    expect($result)->toBeFalse();
+});
+
+test('TwilioCallSending listeners are fired when Twilio::fake() is used', function () {
+    Twilio::fake();
+    $fired = false;
+    \Illuminate\Support\Facades\Event::listen(\Citricguy\TwilioLaravel\Events\TwilioCallSending::class, function () use (&$fired) {
+        $fired = true;
+    });
+    \Citricguy\TwilioLaravel\Facades\Twilio::makeCall('+1234567890', 'https://example.com/twiml');
+    expect($fired)->toBeTrue();
+});

@@ -5,6 +5,8 @@ namespace Citricguy\TwilioLaravel\Testing;
 use Citricguy\TwilioLaravel\Events\TwilioCallQueued;
 use Citricguy\TwilioLaravel\Events\TwilioCallSent;
 use Citricguy\TwilioLaravel\Events\TwilioMessageQueued;
+use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
+use Citricguy\TwilioLaravel\Events\TwilioCallSending;
 use Citricguy\TwilioLaravel\Services\TwilioService;
 use PHPUnit\Framework\Assert as PHPUnit;
 
@@ -37,10 +39,16 @@ class TwilioServiceFake extends TwilioService
     /**
      * Send an SMS message (fake implementation).
      *
-     * @return array
+     * @return array|false
      */
     public function sendMessage(string $to, string $message, array $options = [])
     {
+        // Fire TwilioMessageSending event (for listeners/cancellation)
+        $event = new TwilioMessageSending($to, $message, $options);
+        event($event);
+        if ($event->cancelled()) {
+            return false;
+        }
         return $this->recordMessage('queued', $to, $message, $options);
     }
 
@@ -67,10 +75,16 @@ class TwilioServiceFake extends TwilioService
     /**
      * Make a voice call (fake implementation).
      *
-     * @return array
+     * @return array|false
      */
     public function makeCall(string $to, string $url, array $options = [])
     {
+        // Fire TwilioCallSending event (for listeners/cancellation)
+        $event = new TwilioCallSending($to, $url, $options);
+        event($event);
+        if ($event->cancelled()) {
+            return false;
+        }
         return $this->recordCall('queued', $to, $url, $options);
     }
 

@@ -124,3 +124,25 @@ test('it properly handles StatusCallback option', function () {
                $message->options['StatusCallback'] === 'https://example.com/status';
     });
 });
+
+test('it fires TwilioMessageSending and can be cancelled', function () {
+    $fired = false;
+    \Illuminate\Support\Facades\Event::listen(\Citricguy\TwilioLaravel\Events\TwilioMessageSending::class, function ($event) use (&$fired) {
+        $fired = true;
+        $event->cancel('Testing cancel');
+    });
+
+    $result = \Citricguy\TwilioLaravel\Facades\Twilio::sendMessage('+1234567890', 'Test message');
+    expect($fired)->toBeTrue();
+    expect($result)->toBeFalse();
+});
+
+test('TwilioMessageSending listeners are fired when Twilio::fake() is used', function () {
+    Twilio::fake();
+    $fired = false;
+    \Illuminate\Support\Facades\Event::listen(\Citricguy\TwilioLaravel\Events\TwilioMessageSending::class, function () use (&$fired) {
+        $fired = true;
+    });
+    \Citricguy\TwilioLaravel\Facades\Twilio::sendMessage('+1234567890', 'Test message');
+    expect($fired)->toBeTrue();
+});
