@@ -41,13 +41,14 @@ class TwilioCallSent
     /**
      * Additional options used for the call.
      *
-     * @var array
+     * @var array<string, mixed>
      */
     public $options;
 
     /**
      * Create a new event instance.
      *
+     * @param array<string, mixed> $options
      * @return void
      */
     public function __construct(

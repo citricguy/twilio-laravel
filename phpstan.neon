@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - src
+
+    level: 8
+
+    excludePaths:
+        - vendor
+
+    ignoreErrors:
+        # Dynamic method calls on notifications are expected - notification classes define toTwilioSms/toTwilioCall
+        - '#Call to an undefined method Illuminate\\Notifications\\Notification::toTwilioSms\(\)#'
+        - '#Call to an undefined method Illuminate\\Notifications\\Notification::toTwilioCall\(\)#'
+        # Intentional pattern in testing fake to mark test as passed when callback matches
+        - '#Call to static method PHPUnit\\Framework\\Assert::assertTrue\(\) with true will always evaluate to true#'

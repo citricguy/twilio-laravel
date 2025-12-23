@@ -4,11 +4,10 @@ namespace Citricguy\TwilioLaravel\Tests\Feature;
 
 use Citricguy\TwilioLaravel\Facades\Twilio;
 use Citricguy\TwilioLaravel\Notifications\TwilioCallMessage;
-use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Notification as NotificationFacade;
+use Illuminate\Notifications\Notification;
 
-beforeEach(function() {
+beforeEach(function () {
     // Set test credentials to prevent client creation error
     config(['twilio-laravel.account_sid' => 'test_sid']);
     config(['twilio-laravel.auth_token' => 'test_token']);
@@ -20,6 +19,7 @@ class TestCallUser
     use Notifiable;
 
     public $phone;
+
     public $id;
 
     public function __construct($id = 1)
@@ -43,6 +43,7 @@ class TestCallUser
 class TestCallNotification extends Notification
 {
     public $options;
+
     public $url;
 
     public function __construct($url, array $options = [])
@@ -85,7 +86,7 @@ it('can send a call notification via the notification system', function () {
     Twilio::fake();
 
     // Setup test user
-    $user = new TestCallUser();
+    $user = new TestCallUser;
 
     // Send notification
     $user->notify(new TestCallNotification('https://example.com/twiml'));
@@ -100,7 +101,7 @@ it('can send a call notification via the notification system', function () {
 it('can send a notification with a custom from number', function () {
     Twilio::fake();
 
-    $user = new TestCallUser();
+    $user = new TestCallUser;
 
     // Send notification with custom from number
     $user->notify(new TestCallNotification('https://example.com/twiml', [
@@ -116,7 +117,7 @@ it('can send a notification with a custom from number', function () {
 it('can be sent with a status callback URL', function () {
     Twilio::fake();
 
-    $user = new TestCallUser();
+    $user = new TestCallUser;
 
     // Send notification with status callback
     $user->notify(new TestCallNotification('https://example.com/twiml', [
@@ -132,7 +133,7 @@ it('can be sent with a status callback URL', function () {
 it('can handle simple string URLs', function () {
     Twilio::fake();
 
-    $user = new TestCallUser();
+    $user = new TestCallUser;
 
     // Send notification with simple URL string
     $user->notify(new TestCallNotification('https://example.com/twiml-simple', [
@@ -166,7 +167,7 @@ it('includes notification metadata in the call', function () {
 it('can enable call recording', function () {
     Twilio::fake();
 
-    $user = new TestCallUser();
+    $user = new TestCallUser;
 
     // Send notification with recording enabled
     $user->notify(new TestCallNotification('https://example.com/twiml', [

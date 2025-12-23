@@ -3,7 +3,6 @@
 namespace Citricguy\TwilioLaravel\Tests\Feature;
 
 use Citricguy\TwilioLaravel\Events\TwilioCallQueued;
-use Citricguy\TwilioLaravel\Events\TwilioCallSent;
 use Citricguy\TwilioLaravel\Facades\Twilio;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioCall;
 use Citricguy\TwilioLaravel\Services\TwilioService;
@@ -11,7 +10,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
 
-beforeEach(function() {
+beforeEach(function () {
     // Set test credentials to prevent client creation error
     config(['twilio-laravel.account_sid' => 'test_sid']);
     config(['twilio-laravel.auth_token' => 'test_token']);
@@ -29,7 +28,7 @@ it('can make voice calls through the facade', function () {
 
     // Check that the job was queued
     Queue::assertPushed(SendTwilioCall::class, function ($job) {
-        return $job->to === '+12345678901' && 
+        return $job->to === '+12345678901' &&
                $job->url === 'https://example.com/twiml';
     });
 
@@ -45,7 +44,7 @@ it('can make immediate voice calls via the facade', function () {
     $mockService->shouldReceive('makeCallNow')
         ->once()
         ->withArgs(function ($to, $url, $options = []) {
-            return $to === '+12345678901' && 
+            return $to === '+12345678901' &&
                    $url === 'https://example.com/twiml/immediate';
         })
         ->andReturn(['status' => 'initiated']);

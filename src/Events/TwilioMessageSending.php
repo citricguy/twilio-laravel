@@ -26,7 +26,7 @@ class TwilioMessageSending
     /**
      * Additional options for the message.
      *
-     * @var array
+     * @var array<string, mixed>
      */
     public $options;
 
@@ -47,6 +47,7 @@ class TwilioMessageSending
     /**
      * Create a new event instance.
      *
+     * @param array<string, mixed> $options
      * @return void
      */
     public function __construct(string $to, string $message, array $options = [])

@@ -15,18 +15,19 @@
         "source": "https://github.com/citricguy/twilio-laravel"
     },
     "require": {
-        "php": "^8.3|^8.4",
-        "illuminate/contracts": "^11.0||^12.0",
-        "illuminate/support": "^11.0||^12.0",
+        "php": "^8.3",
+        "illuminate/contracts": "^12.0",
+        "illuminate/support": "^12.0",
         "twilio/sdk": "^8.4"
     },
     "require-dev": {
-        "laravel/pint": "^1.14",
-        "nunomaduro/collision": "^8.1.1",
-        "orchestra/testbench": "^10.0||^11.0",
-        "pestphp/pest": "^3.0",
-        "pestphp/pest-plugin-arch": "^3.0",
-        "pestphp/pest-plugin-laravel": "^3.0"
+        "larastan/larastan": "^3.4",
+        "laravel/pint": "^1.26",
+        "nunomaduro/collision": "^8.8",
+        "orchestra/testbench": "^10.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-arch": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0"
     },
     "autoload": {
         "psr-4": {
@@ -39,9 +40,12 @@
         }
     },
     "scripts": {
+        "lint": "vendor/bin/pint",
+        "test:lint": "vendor/bin/pint --test",
+        "analyse": "vendor/bin/phpstan analyse",
+        "test:analyse": "vendor/bin/phpstan analyse --no-progress",
         "test": "vendor/bin/pest",
-        "test-coverage": "vendor/bin/pest --coverage",
-        "format": "vendor/bin/pint"
+        "test:coverage": "vendor/bin/pest --coverage"
     },
     "config": {
         "sort-packages": true,
@@ -59,6 +63,6 @@
             }
         }
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }

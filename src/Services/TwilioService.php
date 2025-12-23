@@ -38,6 +38,7 @@ class TwilioService
     /**
      * Send an SMS message.
      *
+     * @param array<string, mixed> $options
      * @return mixed
      */
     public function sendMessage(string $to, string $message, array $options = [])
@@ -53,9 +54,9 @@ class TwilioService
     /**
      * Make a voice call.
      *
-     * @param  string  $to  The recipient phone number
-     * @param  string  $url  The TwiML URL for the call
-     * @param  array  $options  Additional options for the call
+     * @param string $to The recipient phone number
+     * @param string $url The TwiML URL for the call
+     * @param array<string, mixed> $options Additional options for the call
      * @return mixed
      */
     public function makeCall(string $to, string $url, array $options = [])
@@ -71,6 +72,7 @@ class TwilioService
     /**
      * Send an SMS message immediately.
      *
+     * @param array<string, mixed> $options
      * @return mixed
      */
     public function sendMessageNow(string $to, string $message, array $options = [])
@@ -133,11 +135,11 @@ class TwilioService
             $messageResponse = $this->client->messages->create($to, $messageData);
 
             // Calculate segments count (for logging/events)
-            $segmentsCount = ceil(mb_strlen((string) $messageData['body']) / 153);
+            $segmentsCount = (int) ceil(mb_strlen((string) $messageData['body']) / 153);
 
             // Fire the sent event
             event(new TwilioMessageSent(
-                $messageResponse->sid,
+                $messageResponse->sid ?? '',
                 $to,
                 $messageData['body'],
                 $messageResponse->status,
@@ -160,9 +162,9 @@ class TwilioService
     /**
      * Make a voice call immediately.
      *
-     * @param  string  $to  The recipient phone number
-     * @param  string  $url  The TwiML URL for the call
-     * @param  array  $options  Additional options for the call
+     * @param string $to The recipient phone number
+     * @param string $url The TwiML URL for the call
+     * @param array<string, mixed> $options Additional options for the call
      * @return mixed
      */
     public function makeCallNow(string $to, string $url, array $options = [])
@@ -231,13 +233,13 @@ class TwilioService
             // Extract 'from' parameter and remove it from callData
             $from = $callData['from'];
             unset($callData['to'], $callData['from']);
-            
+
             // Call with correct parameter order: to, from, options
             $callResponse = $this->client->calls->create($to, $from, $callData);
 
             // Fire the sent event
             event(new TwilioCallSent(
-                $callResponse->sid,
+                $callResponse->sid ?? '',
                 $to,
                 $url,
                 $callResponse->status,
@@ -263,7 +265,8 @@ class TwilioService
     /**
      * Queue an SMS message for sending.
      *
-     * @return array
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
     public function queueMessage(string $to, string $message, array $options = [])
     {
@@ -291,7 +294,7 @@ class TwilioService
         $delay = $options['delay'] ?? null;
 
         // Calculate segments (for logging/events)
-        $segmentsCount = ceil(mb_strlen($message) / 153);
+        $segmentsCount = (int) ceil(mb_strlen($message) / 153);
 
         // Create job
         $job = new SendTwilioMessage($to, $message, $options);
@@ -321,10 +324,10 @@ class TwilioService
     /**
      * Queue a voice call for sending.
      *
-     * @param  string  $to  The recipient phone number
-     * @param  string  $url  The TwiML URL for the call
-     * @param  array  $options  Additional options for the call
-     * @return array
+     * @param string $to The recipient phone number
+     * @param string $url The TwiML URL for the call
+     * @param array<string, mixed> $options Additional options for the call
+     * @return array<string, mixed>
      */
     public function queueCall(string $to, string $url, array $options = [])
     {

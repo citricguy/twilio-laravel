@@ -17,7 +17,7 @@ it('can send messages through the facade', function () {
     // Set credentials to prevent client creation error
     config(['twilio-laravel.account_sid' => 'test_sid']);
     config(['twilio-laravel.auth_token' => 'test_token']);
-    
+
     // Enable queuing for this test
     config(['twilio-laravel.queue_messages' => true]);
 
@@ -60,7 +60,7 @@ it('handles different configuration values', function () {
     // Set credentials to prevent client creation error
     config(['twilio-laravel.account_sid' => 'test_sid']);
     config(['twilio-laravel.auth_token' => 'test_token']);
-    
+
     // Configure different queue name
     config(['twilio-laravel.queue_messages' => true]);
     config(['twilio-laravel.queue_name' => 'twilio-messages']);
@@ -77,7 +77,7 @@ it('handles different configuration values', function () {
 it('respects custom queue options', function () {
     Queue::fake();
     Event::fake();
-    
+
     // Set credentials to prevent client creation error
     config(['twilio-laravel.account_sid' => 'test_sid']);
     config(['twilio-laravel.auth_token' => 'test_token']);
@@ -98,7 +98,7 @@ it('respects custom queue options', function () {
 
 it('can set custom from number per message', function () {
     // Don't use Twilio::fake() here since we're using a mock
-    
+
     // Mock the TwilioService to verify custom from
     $mockService = Mockery::mock(TwilioService::class);
     $mockService->shouldReceive('sendMessageNow')
@@ -121,7 +121,7 @@ it('can set custom from number per message', function () {
 
 it('can set StatusCallback URL for each message', function () {
     // Don't use Twilio::fake() here since we're using a mock
-    
+
     // Mock the TwilioService to verify StatusCallback
     $mockService = Mockery::mock(TwilioService::class);
     $mockService->shouldReceive('sendMessageNow')

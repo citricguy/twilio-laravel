@@ -3,10 +3,10 @@
 namespace Citricguy\TwilioLaravel\Testing;
 
 use Citricguy\TwilioLaravel\Events\TwilioCallQueued;
+use Citricguy\TwilioLaravel\Events\TwilioCallSending;
 use Citricguy\TwilioLaravel\Events\TwilioCallSent;
 use Citricguy\TwilioLaravel\Events\TwilioMessageQueued;
 use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
-use Citricguy\TwilioLaravel\Events\TwilioCallSending;
 use Citricguy\TwilioLaravel\Services\TwilioService;
 use PHPUnit\Framework\Assert as PHPUnit;
 
@@ -15,14 +15,14 @@ class TwilioServiceFake extends TwilioService
     /**
      * All of the messages that have been sent.
      *
-     * @var array
+     * @var array<int, object>
      */
     protected $messages = [];
 
     /**
      * All of the calls that have been made.
      *
-     * @var array
+     * @var array<int, object>
      */
     protected $calls = [];
 
@@ -39,7 +39,8 @@ class TwilioServiceFake extends TwilioService
     /**
      * Send an SMS message (fake implementation).
      *
-     * @return array|false
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>|false
      */
     public function sendMessage(string $to, string $message, array $options = [])
     {
@@ -49,13 +50,15 @@ class TwilioServiceFake extends TwilioService
         if ($event->cancelled()) {
             return false;
         }
+
         return $this->recordMessage('queued', $to, $message, $options);
     }
 
     /**
      * Send an SMS message immediately (fake implementation).
      *
-     * @return array
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
     public function sendMessageNow(string $to, string $message, array $options = [])
     {
@@ -65,7 +68,8 @@ class TwilioServiceFake extends TwilioService
     /**
      * Queue an SMS message for sending (fake implementation).
      *
-     * @return array
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
     public function queueMessage(string $to, string $message, array $options = [])
     {
@@ -75,7 +79,8 @@ class TwilioServiceFake extends TwilioService
     /**
      * Make a voice call (fake implementation).
      *
-     * @return array|false
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>|false
      */
     public function makeCall(string $to, string $url, array $options = [])
     {
@@ -85,13 +90,15 @@ class TwilioServiceFake extends TwilioService
         if ($event->cancelled()) {
             return false;
         }
+
         return $this->recordCall('queued', $to, $url, $options);
     }
 
     /**
      * Make a voice call immediately (fake implementation).
      *
-     * @return array
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
     public function makeCallNow(string $to, string $url, array $options = [])
     {
@@ -101,7 +108,8 @@ class TwilioServiceFake extends TwilioService
     /**
      * Queue a voice call for sending (fake implementation).
      *
-     * @return array
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
     public function queueCall(string $to, string $url, array $options = [])
     {
@@ -111,22 +119,25 @@ class TwilioServiceFake extends TwilioService
     /**
      * Record a message as sent.
      *
-     * @param  string  $type
-     * @param  string  $to
-     * @param  string  $message
-     * @param  array  $options
-     * @return array
+     * @param string $type
+     * @param string $to
+     * @param string $message
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
     protected function recordMessage($type, $to, $message, $options)
     {
+        $messageSid = 'FAKE_SID_'.count($this->messages);
+        $segmentsCount = (int) ceil(mb_strlen($message) / 153);
+
         $this->messages[] = (object) [
             'type' => $type,
             'to' => $to,
             'body' => $message,
             'options' => $options,
-            'messageSid' => 'FAKE_SID_'.count($this->messages),
+            'messageSid' => $messageSid,
             'status' => $type === 'sent' ? 'sent' : 'queued',
-            'segmentsCount' => ceil(mb_strlen($message) / 153),
+            'segmentsCount' => $segmentsCount,
         ];
 
         // Fire appropriate event
@@ -135,16 +146,16 @@ class TwilioServiceFake extends TwilioService
                 $to,
                 $message,
                 'queued',
-                ceil(mb_strlen($message) / 153),
+                $segmentsCount,
                 $options
             ));
         } else {
             event(new \Citricguy\TwilioLaravel\Events\TwilioMessageSent(
-                $this->messages[count($this->messages) - 1]->messageSid,
+                $messageSid,
                 $to,
                 $message,
                 'sent',
-                ceil(mb_strlen($message) / 153),
+                $segmentsCount,
                 $options
             ));
         }
@@ -152,27 +163,29 @@ class TwilioServiceFake extends TwilioService
         return [
             'status' => $type,
             'to' => $to,
-            'messageSid' => $this->messages[count($this->messages) - 1]->messageSid,
+            'messageSid' => $messageSid,
         ];
     }
 
     /**
      * Record a call as initiated.
      *
-     * @param  string  $type
-     * @param  string  $to
-     * @param  string  $url
-     * @param  array  $options
-     * @return array
+     * @param string $type
+     * @param string $to
+     * @param string $url
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
     protected function recordCall($type, $to, $url, $options)
     {
+        $callSid = 'FAKE_CALL_SID_'.count($this->calls);
+
         $this->calls[] = (object) [
             'type' => $type,
             'to' => $to,
             'url' => $url,
             'options' => $options,
-            'callSid' => 'FAKE_CALL_SID_'.count($this->calls),
+            'callSid' => $callSid,
             'status' => $type === 'initiated' ? 'initiated' : 'queued',
         ];
 
@@ -186,7 +199,7 @@ class TwilioServiceFake extends TwilioService
             ));
         } else {
             event(new TwilioCallSent(
-                $this->calls[count($this->calls) - 1]->callSid,
+                $callSid,
                 $to,
                 $url,
                 'initiated',
@@ -197,7 +210,7 @@ class TwilioServiceFake extends TwilioService
         return [
             'status' => $type,
             'to' => $to,
-            'callSid' => $this->calls[count($this->calls) - 1]->callSid,
+            'callSid' => $callSid,
         ];
     }
 
@@ -232,12 +245,12 @@ class TwilioServiceFake extends TwilioService
     /**
      * Assert if a message was sent to the given recipient.
      *
-     * @param  string  $recipient
+     * @param string $recipient
      * @return void
      */
     public function assertSentTo($recipient)
     {
-        return $this->assertSent(function ($message) use ($recipient) {
+        $this->assertSent(function ($message) use ($recipient) {
             return $message->to === $recipient;
         });
     }
@@ -245,7 +258,7 @@ class TwilioServiceFake extends TwilioService
     /**
      * Assert that a message was sent a specific number of times.
      *
-     * @param  int  $count
+     * @param int $count
      * @return void
      */
     public function assertSentCount($count)
@@ -299,12 +312,12 @@ class TwilioServiceFake extends TwilioService
     /**
      * Assert if a call was made to the given recipient.
      *
-     * @param  string  $recipient
+     * @param string $recipient
      * @return void
      */
     public function assertCalledTo($recipient)
     {
-        return $this->assertCallMade(function ($call) use ($recipient) {
+        $this->assertCallMade(function ($call) use ($recipient) {
             return $call->to === $recipient;
         });
     }
@@ -312,7 +325,7 @@ class TwilioServiceFake extends TwilioService
     /**
      * Assert that a call was made a specific number of times.
      *
-     * @param  int  $count
+     * @param int $count
      * @return void
      */
     public function assertCallCount($count)

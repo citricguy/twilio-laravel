@@ -13,7 +13,7 @@ use Twilio\Rest\Api\V2010\Account\MessageInstance;
 use Twilio\Rest\Api\V2010\Account\MessageList;
 use Twilio\Rest\Client;
 
-beforeEach(function() {
+beforeEach(function () {
     // Set test credentials to prevent client creation error
     config(['twilio-laravel.account_sid' => 'test_sid']);
     config(['twilio-laravel.auth_token' => 'test_token']);
@@ -234,5 +234,161 @@ it('allows setting StatusCallback URL', function () {
     // Send a message with StatusCallback
     $service->sendMessage('+12345678901', 'Test message with status callback', [
         'statusCallback' => 'https://example.com/status-callback',
+    ]);
+});
+
+it('throws exception when no sender is configured', function () {
+    config(['twilio-laravel.queue_messages' => false]);
+    config(['twilio-laravel.from' => null]);
+    config(['twilio-laravel.messaging_service_sid' => null]);
+
+    $service = new TwilioService;
+
+    // Create a mock MessageList
+    $mockMessageList = Mockery::mock(MessageList::class);
+
+    // Mock the Twilio client
+    $mockClient = Mockery::mock(Client::class);
+    $mockClient->messages = $mockMessageList;
+
+    // Inject the mock client
+    $reflectionProperty = new \ReflectionProperty($service, 'client');
+    $reflectionProperty->setAccessible(true);
+    $reflectionProperty->setValue($service, $mockClient);
+
+    // Try to send a message without a from number
+    $service->sendMessage('+12345678901', 'Test message');
+})->throws(\Exception::class, 'No valid sender configured for Twilio.');
+
+it('uses messaging service sid when from is not set', function () {
+    config(['twilio-laravel.queue_messages' => false]);
+    config(['twilio-laravel.from' => null]);
+    config(['twilio-laravel.messaging_service_sid' => 'MGXXXXXXXXXXXXXXXXX']);
+
+    $service = new TwilioService;
+
+    // Create a mock MessageInstance
+    $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->sid = 'SM123456';
+    $mockMessage->status = 'sent';
+
+    // Create a mock MessageList expecting messagingServiceSid
+    $mockMessageList = Mockery::mock(MessageList::class);
+    $mockMessageList->shouldReceive('create')
+        ->once()
+        ->with('+12345678901', Mockery::on(function ($arg) {
+            return $arg['messagingServiceSid'] === 'MGXXXXXXXXXXXXXXXXX'
+                && ! isset($arg['from']);
+        }))
+        ->andReturn($mockMessage);
+
+    // Mock the Twilio client
+    $mockClient = Mockery::mock(Client::class);
+    $mockClient->messages = $mockMessageList;
+
+    // Inject the mock client
+    $reflectionProperty = new \ReflectionProperty($service, 'client');
+    $reflectionProperty->setAccessible(true);
+    $reflectionProperty->setValue($service, $mockClient);
+
+    // Send a message
+    $service->sendMessage('+12345678901', 'Test message');
+});
+
+it('uses per-message from option over config', function () {
+    config(['twilio-laravel.queue_messages' => false]);
+    config(['twilio-laravel.from' => '+19876543210']);
+
+    $service = new TwilioService;
+
+    // Create a mock MessageInstance
+    $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->sid = 'SM123456';
+    $mockMessage->status = 'sent';
+
+    // Create a mock MessageList
+    $mockMessageList = Mockery::mock(MessageList::class);
+    $mockMessageList->shouldReceive('create')
+        ->once()
+        ->with('+12345678901', Mockery::on(function ($arg) {
+            return $arg['from'] === '+15551234567'; // Custom from, not config
+        }))
+        ->andReturn($mockMessage);
+
+    // Mock the Twilio client
+    $mockClient = Mockery::mock(Client::class);
+    $mockClient->messages = $mockMessageList;
+
+    // Inject the mock client
+    $reflectionProperty = new \ReflectionProperty($service, 'client');
+    $reflectionProperty->setAccessible(true);
+    $reflectionProperty->setValue($service, $mockClient);
+
+    // Send a message with custom from
+    $service->sendMessage('+12345678901', 'Test message', [
+        'from' => '+15551234567',
+    ]);
+});
+
+it('handles api exceptions and rethrows', function () {
+    config(['twilio-laravel.queue_messages' => false]);
+    config(['twilio-laravel.from' => '+19876543210']);
+    config(['twilio-laravel.debug' => true]);
+
+    $service = new TwilioService;
+
+    // Create a mock MessageList that throws
+    $mockMessageList = Mockery::mock(MessageList::class);
+    $mockMessageList->shouldReceive('create')
+        ->once()
+        ->andThrow(new \Exception('API Error: Invalid phone number'));
+
+    // Mock the Twilio client
+    $mockClient = Mockery::mock(Client::class);
+    $mockClient->messages = $mockMessageList;
+
+    // Inject the mock client
+    $reflectionProperty = new \ReflectionProperty($service, 'client');
+    $reflectionProperty->setAccessible(true);
+    $reflectionProperty->setValue($service, $mockClient);
+
+    // Try to send a message
+    $service->sendMessage('+12345678901', 'Test message');
+})->throws(\Exception::class, 'API Error: Invalid phone number');
+
+it('uses statusCallback from metadata when not in options', function () {
+    config(['twilio-laravel.queue_messages' => false]);
+    config(['twilio-laravel.from' => '+19876543210']);
+
+    $service = new TwilioService;
+
+    // Create a mock MessageInstance
+    $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->sid = 'SM123456';
+    $mockMessage->status = 'sent';
+
+    // Create a mock MessageList expecting statusCallback from metadata
+    $mockMessageList = Mockery::mock(MessageList::class);
+    $mockMessageList->shouldReceive('create')
+        ->once()
+        ->with('+12345678901', Mockery::on(function ($arg) {
+            return $arg['statusCallback'] === 'https://example.com/metadata-callback';
+        }))
+        ->andReturn($mockMessage);
+
+    // Mock the Twilio client
+    $mockClient = Mockery::mock(Client::class);
+    $mockClient->messages = $mockMessageList;
+
+    // Inject the mock client
+    $reflectionProperty = new \ReflectionProperty($service, 'client');
+    $reflectionProperty->setAccessible(true);
+    $reflectionProperty->setValue($service, $mockClient);
+
+    // Send a message with statusCallback in metadata
+    $service->sendMessage('+12345678901', 'Test message', [
+        'metadata' => [
+            'statusCallback' => 'https://example.com/metadata-callback',
+        ],
     ]);
 });

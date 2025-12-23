@@ -25,7 +25,7 @@ class VerifyWebhookSetupCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Verifying Twilio webhook configuration...');
 
@@ -47,8 +47,9 @@ class VerifyWebhookSetupCommand extends Command
         }
 
         // Validate full URL
-        $baseUrl = $this->option('url') ?: URL::to('/');
-        $fullUrl = rtrim($baseUrl, '/').'/'.ltrim($webhookPath, '/');
+        $baseUrlOption = $this->option('url');
+        $baseUrl = is_string($baseUrlOption) ? $baseUrlOption : URL::to('/');
+        $fullUrl = rtrim($baseUrl, '/').'/'.ltrim((string) $webhookPath, '/');
         $this->info("📌 Your full webhook URL should be: $fullUrl");
 
         // Check validation setting
@@ -64,5 +65,7 @@ class VerifyWebhookSetupCommand extends Command
         $this->line('1. Set up this URL in your Twilio console: '.$fullUrl);
         $this->line('2. Send a test message through Twilio to trigger a webhook');
         $this->line('3. Check your Laravel logs to ensure signatures are validating properly');
+
+        return 0;
     }
 }

@@ -14,14 +14,14 @@ class TwilioSmsMessage
     /**
      * The options for the message.
      *
-     * @var array
+     * @var array<string, mixed>
      */
     public $options = [];
 
     /**
      * Create a new message instance.
      *
-     * @param  string  $content
+     * @param string $content
      * @return void
      */
     public function __construct($content = '')
@@ -32,7 +32,7 @@ class TwilioSmsMessage
     /**
      * Set the message content.
      *
-     * @param  string  $content
+     * @param string $content
      * @return $this
      */
     public function content($content)
@@ -45,7 +45,7 @@ class TwilioSmsMessage
     /**
      * Set the from phone number.
      *
-     * @param  string  $from
+     * @param string $from
      * @return $this
      */
     public function from($from)
@@ -58,7 +58,7 @@ class TwilioSmsMessage
     /**
      * Set the messaging service SID.
      *
-     * @param  string  $messagingServiceSid
+     * @param string $messagingServiceSid
      * @return $this
      */
     public function messagingService($messagingServiceSid)
@@ -71,7 +71,7 @@ class TwilioSmsMessage
     /**
      * Set media URLs to include in the message.
      *
-     * @param  array|string  $urls
+     * @param array<int, string>|string $urls
      * @return $this
      */
     public function mediaUrls($urls)
@@ -84,7 +84,7 @@ class TwilioSmsMessage
     /**
      * Set the status callback URL.
      *
-     * @param  string  $url
+     * @param string $url
      * @return $this
      */
     public function statusCallback($url)
@@ -97,6 +97,7 @@ class TwilioSmsMessage
     /**
      * Set additional options for the message.
      *
+     * @param array<string, mixed> $options
      * @return $this
      */
     public function options(array $options)
@@ -109,7 +110,7 @@ class TwilioSmsMessage
     /**
      * Get the array representation of the message.
      *
-     * @return array
+     * @return array{content: string, options: array<string, mixed>}
      */
     public function toArray()
     {

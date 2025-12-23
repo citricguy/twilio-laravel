@@ -28,7 +28,7 @@ class TwilioWebhookReceived
     /**
      * The webhook payload.
      *
-     * @var array
+     * @var array<string, mixed>
      */
     public $payload;
 
@@ -51,6 +51,7 @@ class TwilioWebhookReceived
     /**
      * Create a new event instance.
      *
+     * @param array<string, mixed> $payload
      * @return void
      */
     public function __construct(array $payload, ?string $type = null)
@@ -62,7 +63,7 @@ class TwilioWebhookReceived
     /**
      * Attempt to determine the webhook type from payload.
      *
-     * @param  array  $payload  The webhook payload
+     * @param array<string, mixed> $payload The webhook payload
      * @return string|null The determined webhook type or null if unknown
      */
     protected function determineType(array $payload): ?string
@@ -123,7 +124,7 @@ class TwilioWebhookReceived
      */
     public function isMessageStatusUpdate(): bool
     {
-        return strpos($this->type, self::TYPE_MESSAGE_STATUS_PREFIX) === 0;
+        return $this->type !== null && strpos($this->type, self::TYPE_MESSAGE_STATUS_PREFIX) === 0;
     }
 
     /**

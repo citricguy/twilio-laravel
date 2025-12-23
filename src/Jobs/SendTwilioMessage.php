@@ -32,13 +32,14 @@ class SendTwilioMessage implements ShouldQueue
     /**
      * Additional options for the message.
      *
-     * @var array
+     * @var array<string, mixed>
      */
     public $options;
 
     /**
      * Create a new job instance.
      *
+     * @param array<string, mixed> $options
      * @return void
      */
     public function __construct(string $to, string $message, array $options = [])

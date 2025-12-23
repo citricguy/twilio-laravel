@@ -3,7 +3,6 @@
 use Citricguy\TwilioLaravel\Events\TwilioCallQueued;
 use Citricguy\TwilioLaravel\Events\TwilioCallSent;
 use Citricguy\TwilioLaravel\Facades\Twilio;
-use Citricguy\TwilioLaravel\Testing\TwilioServiceFake;
 use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\AssertionFailedError;
 

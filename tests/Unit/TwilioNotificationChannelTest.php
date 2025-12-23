@@ -105,10 +105,7 @@ it('doesnt send if no phone number is available', function () {
     {
         use Notifiable;
 
-        public function routeNotificationForTwilioSms()
-        {
-            return null;
-        }
+        public function routeNotificationForTwilioSms() {}
     };
 
     $notification = new TestNotification;

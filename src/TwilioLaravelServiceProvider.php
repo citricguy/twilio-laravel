@@ -15,7 +15,7 @@ use Illuminate\Support\ServiceProvider;
 
 class TwilioLaravelServiceProvider extends ServiceProvider
 {
-    public function boot()
+    public function boot(): void
     {
         $this->registerRoutes();
 
@@ -51,6 +51,9 @@ class TwilioLaravelServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * @return array{middleware: array<int, string>}
+     */
     private function routeConfiguration(): array
     {
         return [

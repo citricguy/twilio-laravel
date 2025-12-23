@@ -6,12 +6,12 @@ use Citricguy\TwilioLaravel\Testing\TwilioServiceFake;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static mixed sendMessage(string $to, string $message, array $options = [])
- * @method static mixed sendMessageNow(string $to, string $message, array $options = [])
- * @method static mixed queueMessage(string $to, string $message, array $options = [])
- * @method static mixed makeCall(string $to, string $url, array $options = [])
- * @method static mixed makeCallNow(string $to, string $url, array $options = [])
- * @method static mixed queueCall(string $to, string $url, array $options = [])
+ * @method static mixed sendMessage(string $to, string $message, array<string, mixed> $options = [])
+ * @method static mixed sendMessageNow(string $to, string $message, array<string, mixed> $options = [])
+ * @method static mixed queueMessage(string $to, string $message, array<string, mixed> $options = [])
+ * @method static mixed makeCall(string $to, string $url, array<string, mixed> $options = [])
+ * @method static mixed makeCallNow(string $to, string $url, array<string, mixed> $options = [])
+ * @method static mixed queueCall(string $to, string $url, array<string, mixed> $options = [])
  * @method static void fake()
  * @method static void assertSent(callable|null $callback = null)
  * @method static void assertSentTo(string $recipient)
@@ -43,6 +43,6 @@ class Twilio extends Facade
      */
     public static function fake()
     {
-        static::swap(new TwilioServiceFake());
+        static::swap(new TwilioServiceFake);
     }
 }

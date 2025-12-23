@@ -14,14 +14,14 @@ class TwilioCallMessage
     /**
      * The options for the call.
      *
-     * @var array
+     * @var array<string, mixed>
      */
     public $options = [];
 
     /**
      * Create a new message instance.
      *
-     * @param  string  $url
+     * @param string $url
      * @return void
      */
     public function __construct($url = '')
@@ -32,7 +32,7 @@ class TwilioCallMessage
     /**
      * Set the TwiML URL.
      *
-     * @param  string  $url
+     * @param string $url
      * @return $this
      */
     public function url($url)
@@ -45,7 +45,7 @@ class TwilioCallMessage
     /**
      * Set the from phone number.
      *
-     * @param  string  $from
+     * @param string $from
      * @return $this
      */
     public function from($from)
@@ -58,7 +58,7 @@ class TwilioCallMessage
     /**
      * Set the status callback URL.
      *
-     * @param  string  $url
+     * @param string $url
      * @return $this
      */
     public function statusCallback($url)
@@ -67,11 +67,11 @@ class TwilioCallMessage
 
         return $this;
     }
-    
+
     /**
      * Set the status callback events.
      *
-     * @param  array  $events
+     * @param array<int, string> $events
      * @return $this
      */
     public function statusCallbackEvent(array $events)
@@ -84,7 +84,7 @@ class TwilioCallMessage
     /**
      * Set whether to record the call.
      *
-     * @param  bool  $record
+     * @param bool $record
      * @return $this
      */
     public function record($record = true)
@@ -97,7 +97,7 @@ class TwilioCallMessage
     /**
      * Set timeout for the call (in seconds).
      *
-     * @param  int  $timeout
+     * @param int $timeout
      * @return $this
      */
     public function timeout($timeout)
@@ -110,7 +110,7 @@ class TwilioCallMessage
     /**
      * Set additional options for the call.
      *
-     * @param  array  $options
+     * @param array<string, mixed> $options
      * @return $this
      */
     public function options(array $options)
@@ -123,7 +123,7 @@ class TwilioCallMessage
     /**
      * Get the array representation of the message.
      *
-     * @return array
+     * @return array{url: string, options: array<string, mixed>}
      */
     public function toArray()
     {
