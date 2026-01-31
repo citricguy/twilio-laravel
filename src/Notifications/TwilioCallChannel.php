@@ -9,13 +9,15 @@ class TwilioCallChannel
 {
     /**
      * Send the given notification.
-     *
-     * @param mixed $notifiable
-     * @return void
      */
-    public function send($notifiable, Notification $notification)
+    public function send(object $notifiable, Notification $notification): void
     {
-        if (! $to = $notifiable->routeNotificationForTwilioCall($notification)) {
+        if (! method_exists($notifiable, 'routeNotificationForTwilioCall')) {
+            return;
+        }
+
+        $to = $notifiable->routeNotificationForTwilioCall($notification);
+        if (! $to) {
             return;
         }
 
@@ -30,10 +32,11 @@ class TwilioCallChannel
         $options = $message['options'] ?? [];
 
         // Add notification context to the options
+        $notifiableId = method_exists($notifiable, 'getKey') ? $notifiable->getKey() : null;
         $options['_notification'] = [
             'type' => get_class($notification),
             'notifiable' => get_class($notifiable),
-            'notifiable_id' => $notifiable->getKey() ?? null,
+            'notifiable_id' => $notifiableId,
         ];
 
         Twilio::makeCall(

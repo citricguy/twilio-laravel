@@ -16,7 +16,8 @@ class WebhookSignatureHelper
      */
     public static function generateValidSignature(string $url, array $params, ?string $authToken = null): string
     {
-        $authToken = $authToken ?: (string) config('twilio-laravel.auth_token');
+        $configToken = config('twilio-laravel.auth_token');
+        $authToken = $authToken ?: (is_string($configToken) ? $configToken : '');
 
         $validator = new RequestValidator($authToken);
 
@@ -34,7 +35,8 @@ class WebhookSignatureHelper
      */
     public static function isValidSignature(string $signature, string $url, array $params, ?string $authToken = null): bool
     {
-        $authToken = $authToken ?: (string) config('twilio-laravel.auth_token');
+        $configToken = config('twilio-laravel.auth_token');
+        $authToken = $authToken ?: (is_string($configToken) ? $configToken : '');
 
         $validator = new RequestValidator($authToken);
 

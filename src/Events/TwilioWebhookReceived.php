@@ -70,7 +70,7 @@ class TwilioWebhookReceived
     {
         // Voice calls
         if (isset($payload['CallSid'])) {
-            if (isset($payload['CallStatus'])) {
+            if (isset($payload['CallStatus']) && is_string($payload['CallStatus'])) {
                 $status = strtolower($payload['CallStatus']);
 
                 // Inbound call statuses typically include: 'ringing', 'in-progress', 'queued'
@@ -88,13 +88,14 @@ class TwilioWebhookReceived
         // SMS/MMS messages
         if (isset($payload['MessageSid'])) {
             // Status webhooks
-            if (isset($payload['MessageStatus'])) {
+            if (isset($payload['MessageStatus']) && is_string($payload['MessageStatus'])) {
                 return self::TYPE_MESSAGE_STATUS_PREFIX.strtolower($payload['MessageStatus']);
             }
 
             // Inbound SMS vs MMS distinction
             if (isset($payload['Body'])) {
-                if (isset($payload['NumMedia']) && intval($payload['NumMedia']) > 0) {
+                $numMedia = isset($payload['NumMedia']) && (is_int($payload['NumMedia']) || is_string($payload['NumMedia'])) ? intval($payload['NumMedia']) : 0;
+                if ($numMedia > 0) {
                     return self::TYPE_MESSAGE_INBOUND_MMS;
                 }
 
@@ -154,11 +155,11 @@ class TwilioWebhookReceived
      */
     public function getStatusType(): ?string
     {
-        if ($this->isMessageStatusUpdate() && isset($this->payload['MessageStatus'])) {
+        if ($this->isMessageStatusUpdate() && isset($this->payload['MessageStatus']) && is_string($this->payload['MessageStatus'])) {
             return strtolower($this->payload['MessageStatus']);
         }
 
-        if ($this->isVoiceStatusUpdate() && isset($this->payload['CallStatus'])) {
+        if ($this->isVoiceStatusUpdate() && isset($this->payload['CallStatus']) && is_string($this->payload['CallStatus'])) {
             return strtolower($this->payload['CallStatus']);
         }
 

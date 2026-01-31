@@ -25,7 +25,7 @@ class VerifyTwilioWebhook
 
         $authToken = config('twilio-laravel.auth_token');
 
-        if (empty($authToken)) {
+        if (empty($authToken) || ! is_string($authToken)) {
             Log::error('Twilio auth token is not configured.');
             abort(500, 'Twilio configuration error.');
         }

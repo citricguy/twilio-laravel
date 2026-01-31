@@ -45,8 +45,11 @@ class TwilioLaravelServiceProvider extends ServiceProvider
 
     private function registerRoutes(): void
     {
-        Route::group($this->routeConfiguration(), function () {
-            Route::post(config('twilio-laravel.webhook_path'), TwilioLaravelWebhookController::class)
+        $webhookPath = config('twilio-laravel.webhook_path');
+        $webhookPathStr = is_string($webhookPath) ? $webhookPath : '/twilio/webhook';
+
+        Route::group($this->routeConfiguration(), function () use ($webhookPathStr) {
+            Route::post($webhookPathStr, TwilioLaravelWebhookController::class)
                 ->name('twilio-laravel.process-webhook');
         });
     }
@@ -71,12 +74,16 @@ class TwilioLaravelServiceProvider extends ServiceProvider
     {
         Notification::resolved(function (ChannelManager $service) {
             // Register SMS channel
-            $service->extend(config('twilio-laravel.notifications.channel_name', 'twilioSms'), function ($app) {
+            $smsChannelName = config('twilio-laravel.notifications.channel_name', 'twilioSms');
+            $smsChannelNameStr = is_string($smsChannelName) ? $smsChannelName : 'twilioSms';
+            $service->extend($smsChannelNameStr, function ($app) {
                 return new TwilioSmsChannel;
             });
 
             // Register Call channel
-            $service->extend(config('twilio-laravel.notifications.call_channel_name', 'twilioCall'), function ($app) {
+            $callChannelName = config('twilio-laravel.notifications.call_channel_name', 'twilioCall');
+            $callChannelNameStr = is_string($callChannelName) ? $callChannelName : 'twilioCall';
+            $service->extend($callChannelNameStr, function ($app) {
                 return new TwilioCallChannel;
             });
         });

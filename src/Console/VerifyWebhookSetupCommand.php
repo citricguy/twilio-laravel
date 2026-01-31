@@ -40,16 +40,17 @@ class VerifyWebhookSetupCommand extends Command
 
         // Check webhook path
         $webhookPath = config('twilio-laravel.webhook_path');
-        if (empty($webhookPath)) {
+        $webhookPathStr = is_string($webhookPath) ? $webhookPath : '';
+        if (empty($webhookPathStr)) {
             $this->error('❌ Webhook path is not configured!');
         } else {
-            $this->info("✅ Webhook path is set to: $webhookPath");
+            $this->info("✅ Webhook path is set to: {$webhookPathStr}");
         }
 
         // Validate full URL
         $baseUrlOption = $this->option('url');
         $baseUrl = is_string($baseUrlOption) ? $baseUrlOption : URL::to('/');
-        $fullUrl = rtrim($baseUrl, '/').'/'.ltrim((string) $webhookPath, '/');
+        $fullUrl = rtrim($baseUrl, '/').'/'.ltrim($webhookPathStr, '/');
         $this->info("📌 Your full webhook URL should be: $fullUrl");
 
         // Check validation setting

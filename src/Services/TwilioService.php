@@ -29,9 +29,12 @@ class TwilioService
      */
     public function __construct()
     {
+        $accountSid = config('twilio-laravel.account_sid');
+        $authToken = config('twilio-laravel.auth_token');
+
         $this->client = new TwilioClient(
-            config('twilio-laravel.account_sid'),
-            config('twilio-laravel.auth_token')
+            is_string($accountSid) ? $accountSid : null,
+            is_string($authToken) ? $authToken : null
         );
     }
 
@@ -122,7 +125,7 @@ class TwilioService
             // Add status callback URL if provided
             if (! empty($options['statusCallback'])) {
                 $messageData['statusCallback'] = $options['statusCallback'];
-            } elseif (! empty($options['metadata']['statusCallback'])) {
+            } elseif (is_array($options['metadata'] ?? null) && ! empty($options['metadata']['statusCallback'])) {
                 $messageData['statusCallback'] = $options['metadata']['statusCallback'];
             }
 
@@ -235,6 +238,7 @@ class TwilioService
             unset($callData['to'], $callData['from']);
 
             // Call with correct parameter order: to, from, options
+            /** @var string $from */
             $callResponse = $this->client->calls->create($to, $from, $callData);
 
             // Fire the sent event
@@ -290,7 +294,9 @@ class TwilioService
             ];
         }
 
-        $queueName = $options['queue'] ?? config('twilio-laravel.queue_name', 'default');
+        $configQueueName = config('twilio-laravel.queue_name', 'default');
+        $queueName = $options['queue'] ?? $configQueueName;
+        $queueNameStr = is_string($queueName) ? $queueName : 'default';
         $delay = $options['delay'] ?? null;
 
         // Calculate segments (for logging/events)
@@ -300,10 +306,10 @@ class TwilioService
         $job = new SendTwilioMessage($to, $message, $options);
 
         // Queue with optional delay
-        if ($delay) {
-            $job->delay($delay)->onQueue($queueName);
+        if ($delay !== null && (is_int($delay) || $delay instanceof \DateTimeInterface || $delay instanceof \DateInterval)) {
+            $job->delay($delay)->onQueue($queueNameStr);
         } else {
-            $job->onQueue($queueName);
+            $job->onQueue($queueNameStr);
         }
 
         // Dispatch the job
@@ -352,17 +358,19 @@ class TwilioService
         }
 
         // Set queue name and delay
-        $queueName = $options['queue'] ?? config('twilio-laravel.queue_name', 'default');
+        $configQueueName = config('twilio-laravel.queue_name', 'default');
+        $queueName = $options['queue'] ?? $configQueueName;
+        $queueNameStr = is_string($queueName) ? $queueName : 'default';
         $delay = $options['delay'] ?? null;
 
         // Create job
         $job = new SendTwilioCall($to, $url, $options);
 
         // Queue with optional delay
-        if ($delay) {
-            $job->delay($delay)->onQueue($queueName);
+        if ($delay !== null && (is_int($delay) || $delay instanceof \DateTimeInterface || $delay instanceof \DateInterval)) {
+            $job->delay($delay)->onQueue($queueNameStr);
         } else {
-            $job->onQueue($queueName);
+            $job->onQueue($queueNameStr);
         }
 
         // Dispatch the job
