@@ -86,3 +86,9 @@ it('invalidates when URL changes', function () {
     $isValid = WebhookSignatureHelper::isValidSignature($signature, $changedUrl, $params, $authToken);
     expect($isValid)->toBeFalse();
 });
+
+it('throws when no auth token is configured or provided', function () {
+    Config::set('twilio-laravel.auth_token', null);
+
+    WebhookSignatureHelper::generateValidSignature('https://example.com/webhooks/twilio', ['foo' => 'bar']);
+})->throws(\InvalidArgumentException::class, 'Twilio auth token must be configured or explicitly provided.');

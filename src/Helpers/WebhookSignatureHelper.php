@@ -16,10 +16,7 @@ class WebhookSignatureHelper
      */
     public static function generateValidSignature(string $url, array $params, ?string $authToken = null): string
     {
-        $configToken = config('twilio-laravel.auth_token');
-        $authToken = $authToken ?: (is_string($configToken) ? $configToken : '');
-
-        $validator = new RequestValidator($authToken);
+        $validator = new RequestValidator(self::resolveAuthToken($authToken));
 
         return $validator->computeSignature($url, $params);
     }
@@ -35,11 +32,22 @@ class WebhookSignatureHelper
      */
     public static function isValidSignature(string $signature, string $url, array $params, ?string $authToken = null): bool
     {
-        $configToken = config('twilio-laravel.auth_token');
-        $authToken = $authToken ?: (is_string($configToken) ? $configToken : '');
-
-        $validator = new RequestValidator($authToken);
+        $validator = new RequestValidator(self::resolveAuthToken($authToken));
 
         return $validator->validate($signature, $url, $params);
+    }
+
+    private static function resolveAuthToken(?string $authToken): string
+    {
+        if (is_string($authToken) && $authToken !== '') {
+            return $authToken;
+        }
+
+        $configToken = config('twilio-laravel.auth_token');
+        if (is_string($configToken) && $configToken !== '') {
+            return $configToken;
+        }
+
+        throw new \InvalidArgumentException('Twilio auth token must be configured or explicitly provided.');
     }
 }

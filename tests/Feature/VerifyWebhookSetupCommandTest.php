@@ -16,7 +16,7 @@ it('shows warning when auth token is not configured', function () {
 
     expect($result)->toBe(0);
     expect($output)->toContain('Auth token is not configured properly');
-    expect($output)->toContain('Set TWILIO_TOKEN in your .env file');
+    expect($output)->toContain('Set TWILIO_AUTH_TOKEN in your .env file');
 });
 
 it('shows success when auth token is configured', function () {
@@ -32,6 +32,18 @@ it('shows success when auth token is configured', function () {
 it('shows warning when webhook validation is disabled', function () {
     Config::set('twilio-laravel.auth_token', 'configured_token');
     Config::set('twilio-laravel.validate_webhook', false);
+
+    $result = Artisan::call('twilio:verify-webhook-setup');
+    $output = Artisan::output();
+
+    expect($result)->toBe(0);
+    expect($output)->toContain('Webhook signature validation is DISABLED');
+});
+
+it('shows warning when webhook validation is disabled via published config key', function () {
+    Config::set('twilio-laravel.auth_token', 'configured_token');
+    Config::set('twilio-laravel.validate_webhook', null);
+    Config::set('twilio-laravel.validate_webhook_signature', false);
 
     $result = Artisan::call('twilio:verify-webhook-setup');
     $output = Artisan::output();

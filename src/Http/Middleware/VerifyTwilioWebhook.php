@@ -17,7 +17,7 @@ class VerifyTwilioWebhook
     public function handle(Request $request, Closure $next)
     {
         // Skip validation if explicitly disabled
-        if (config('twilio-laravel.validate_webhook') === false) {
+        if (! $this->webhookValidationEnabled()) {
             Log::info('Twilio webhook signature validation is disabled.');
 
             return $next($request);
@@ -70,5 +70,17 @@ class VerifyTwilioWebhook
         }
 
         return $next($request);
+    }
+
+    private function webhookValidationEnabled(): bool
+    {
+        $legacyValue = config('twilio-laravel.validate_webhook');
+        if (is_bool($legacyValue)) {
+            return $legacyValue;
+        }
+
+        $configuredValue = config('twilio-laravel.validate_webhook_signature');
+
+        return is_bool($configuredValue) ? $configuredValue : true;
     }
 }

@@ -35,7 +35,8 @@ return [
     | are genuinely from Twilio using the signature in the request header.
     |
     */
-    'validate_webhook_signature' => env('TWILIO_VALIDATE_WEBHOOK_SIGNATURE', true),
+    'validate_webhook' => env('TWILIO_VALIDATE_WEBHOOK', env('TWILIO_VALIDATE_WEBHOOK_SIGNATURE', true)),
+    'validate_webhook_signature' => env('TWILIO_VALIDATE_WEBHOOK_SIGNATURE', env('TWILIO_VALIDATE_WEBHOOK', true)),
 
     /*
     |--------------------------------------------------------------------------

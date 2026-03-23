@@ -33,7 +33,7 @@ class VerifyWebhookSetupCommand extends Command
         $authToken = config('twilio-laravel.auth_token');
         if (empty($authToken) || $authToken === 'your-twilio-auth-token') {
             $this->error('❌ Auth token is not configured properly!');
-            $this->warn('Set TWILIO_TOKEN in your .env file with your actual Twilio auth token');
+            $this->warn('Set TWILIO_AUTH_TOKEN in your .env file with your actual Twilio auth token');
         } else {
             $this->info('✅ Auth token is configured');
         }
@@ -54,7 +54,7 @@ class VerifyWebhookSetupCommand extends Command
         $this->info("📌 Your full webhook URL should be: $fullUrl");
 
         // Check validation setting
-        $validationEnabled = config('twilio-laravel.validate_webhook');
+        $validationEnabled = $this->webhookValidationEnabled();
         if ($validationEnabled) {
             $this->info('✅ Webhook signature validation is ENABLED');
         } else {
@@ -68,5 +68,17 @@ class VerifyWebhookSetupCommand extends Command
         $this->line('3. Check your Laravel logs to ensure signatures are validating properly');
 
         return 0;
+    }
+
+    private function webhookValidationEnabled(): bool
+    {
+        $legacyValue = config('twilio-laravel.validate_webhook');
+        if (is_bool($legacyValue)) {
+            return $legacyValue;
+        }
+
+        $configuredValue = config('twilio-laravel.validate_webhook_signature');
+
+        return is_bool($configuredValue) ? $configuredValue : true;
     }
 }

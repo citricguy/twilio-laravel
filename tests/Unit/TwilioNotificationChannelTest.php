@@ -115,3 +115,25 @@ it('doesnt send if no phone number is available', function () {
 
     Twilio::assertNothingSent();
 });
+
+it('uses the generic notification routing method when available', function () {
+    Twilio::fake();
+
+    $notifiable = new class
+    {
+        use Notifiable;
+
+        public function routeNotificationFor($driver, $notification = null)
+        {
+            return $driver === 'twilioSms' ? '+14444444444' : null;
+        }
+    };
+
+    $notification = new TestNotification;
+
+    $channel = new TwilioSmsChannel;
+    $channel->send($notifiable, $notification);
+
+    Twilio::assertSent(fn ($message) => $message->to === '+14444444444' &&
+        $message->body === 'Test notification message');
+});

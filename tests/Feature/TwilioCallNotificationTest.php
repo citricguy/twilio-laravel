@@ -179,3 +179,24 @@ it('can enable call recording', function () {
         return isset($call->options['record']) && $call->options['record'] === true;
     });
 });
+
+it('uses the generic notification routing method for call channels', function () {
+    Twilio::fake();
+
+    $user = new class
+    {
+        use Notifiable;
+
+        public function routeNotificationFor($driver, $notification = null)
+        {
+            return $driver === 'twilioCall' ? '+14444444444' : null;
+        }
+    };
+
+    $user->notify(new TestCallNotification('https://example.com/twiml-generic-route'));
+
+    Twilio::assertCallMade(function ($call) {
+        return $call->to === '+14444444444' &&
+               $call->url === 'https://example.com/twiml-generic-route';
+    });
+});

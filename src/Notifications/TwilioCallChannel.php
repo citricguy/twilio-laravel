@@ -12,12 +12,8 @@ class TwilioCallChannel
      */
     public function send(object $notifiable, Notification $notification): void
     {
-        if (! method_exists($notifiable, 'routeNotificationForTwilioCall')) {
-            return;
-        }
-
-        $to = $notifiable->routeNotificationForTwilioCall($notification);
-        if (! $to) {
+        $to = $this->resolveRecipient($notifiable, $notification);
+        if ($to === null) {
             return;
         }
 
@@ -27,9 +23,16 @@ class TwilioCallChannel
             $message = ['url' => $message];
         } elseif ($message instanceof TwilioCallMessage) {
             $message = $message->toArray();
+        } elseif (! is_array($message)) {
+            throw new \UnexpectedValueException('Twilio call notifications must return a string, array, or TwilioCallMessage instance.');
         }
 
-        $options = $message['options'] ?? [];
+        $url = $message['url'] ?? null;
+        if (! is_string($url) || $url === '') {
+            throw new \UnexpectedValueException('Twilio call notifications must include a non-empty "url" value.');
+        }
+
+        $options = is_array($message['options'] ?? null) ? $message['options'] : [];
 
         // Add notification context to the options
         $notifiableId = method_exists($notifiable, 'getKey') ? $notifiable->getKey() : null;
@@ -41,8 +44,21 @@ class TwilioCallChannel
 
         Twilio::makeCall(
             $to,
-            $message['url'],
+            $url,
             $options
         );
+    }
+
+    private function resolveRecipient(object $notifiable, Notification $notification): ?string
+    {
+        $route = null;
+
+        if (method_exists($notifiable, 'routeNotificationFor')) {
+            $route = $notifiable->routeNotificationFor('twilioCall', $notification);
+        } elseif (method_exists($notifiable, 'routeNotificationForTwilioCall')) {
+            $route = $notifiable->routeNotificationForTwilioCall($notification);
+        }
+
+        return is_string($route) && $route !== '' ? $route : null;
     }
 }
