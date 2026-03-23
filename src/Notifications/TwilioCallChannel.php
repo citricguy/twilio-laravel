@@ -59,6 +59,23 @@ class TwilioCallChannel
             $route = $notifiable->routeNotificationForTwilioCall($notification);
         }
 
-        return is_string($route) && $route !== '' ? $route : null;
+        return $this->normalizeRecipient($route);
+    }
+
+    private function normalizeRecipient(mixed $route): ?string
+    {
+        if (is_string($route)) {
+            $resolved = trim($route);
+
+            return $resolved !== '' ? $resolved : null;
+        }
+
+        if (is_object($route) && method_exists($route, '__toString')) {
+            $resolved = trim((string) $route);
+
+            return $resolved !== '' ? $resolved : null;
+        }
+
+        return null;
     }
 }

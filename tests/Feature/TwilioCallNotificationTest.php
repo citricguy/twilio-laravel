@@ -6,6 +6,7 @@ use Citricguy\TwilioLaravel\Facades\Twilio;
 use Citricguy\TwilioLaravel\Notifications\TwilioCallMessage;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
+use Stringable;
 
 beforeEach(function () {
     // Set test credentials to prevent client creation error
@@ -198,5 +199,63 @@ it('uses the generic notification routing method for call channels', function ()
     Twilio::assertCallMade(function ($call) {
         return $call->to === '+14444444444' &&
                $call->url === 'https://example.com/twiml-generic-route';
+    });
+});
+
+it('accepts stringable notification route values for call channels', function () {
+    Twilio::fake();
+
+    $user = new class
+    {
+        use Notifiable;
+
+        public function routeNotificationForTwilioCall($notification): object
+        {
+            return new class implements Stringable
+            {
+                public function __toString(): string
+                {
+                    return '+18085551234';
+                }
+            };
+        }
+    };
+
+    $user->notify(new TestCallNotification('https://example.com/twiml-stringable'));
+
+    Twilio::assertCallMade(function ($call) {
+        return $call->to === '+18085551234' &&
+               $call->url === 'https://example.com/twiml-stringable';
+    });
+});
+
+it('accepts stringable values from the generic notification route method for call channels', function () {
+    Twilio::fake();
+
+    $user = new class
+    {
+        use Notifiable;
+
+        public function routeNotificationFor($driver, $notification = null)
+        {
+            if ($driver !== 'twilioCall') {
+                return;
+            }
+
+            return new class implements Stringable
+            {
+                public function __toString(): string
+                {
+                    return '+18085550000';
+                }
+            };
+        }
+    };
+
+    $user->notify(new TestCallNotification('https://example.com/twiml-generic-stringable'));
+
+    Twilio::assertCallMade(function ($call) {
+        return $call->to === '+18085550000' &&
+               $call->url === 'https://example.com/twiml-generic-stringable';
     });
 });

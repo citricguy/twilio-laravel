@@ -7,6 +7,7 @@ use Citricguy\TwilioLaravel\Notifications\TwilioSmsChannel;
 use Citricguy\TwilioLaravel\Notifications\TwilioSmsMessage;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
+use Stringable;
 
 class TestNotifiable
 {
@@ -135,5 +136,67 @@ it('uses the generic notification routing method when available', function () {
     $channel->send($notifiable, $notification);
 
     Twilio::assertSent(fn ($message) => $message->to === '+14444444444' &&
+        $message->body === 'Test notification message');
+});
+
+it('accepts stringable notification route values', function () {
+    Twilio::fake();
+
+    $notifiable = new class
+    {
+        use Notifiable;
+
+        public function routeNotificationForTwilioSms($notification): object
+        {
+            return new class implements Stringable
+            {
+                public function __toString(): string
+                {
+                    return '+18085551234';
+                }
+            };
+        }
+    };
+
+    $notification = new TestNotification;
+
+    $channel = new TwilioSmsChannel;
+    $channel->send($notifiable, $notification);
+
+    Twilio::assertSentCount(1);
+    Twilio::assertSent(fn ($message) => $message->to === '+18085551234' &&
+        $message->body === 'Test notification message');
+});
+
+it('accepts stringable values from the generic notification route method', function () {
+    Twilio::fake();
+
+    $notifiable = new class
+    {
+        use Notifiable;
+
+        public function routeNotificationFor($driver, $notification = null)
+        {
+            if ($driver !== 'twilioSms') {
+                return;
+            }
+
+            return new class implements Stringable
+            {
+                public function __toString(): string
+                {
+                    return '+18085550000';
+                }
+            };
+        }
+    };
+
+    $notification = new TestNotification;
+
+    $channel = new TwilioSmsChannel;
+    $channel->send($notifiable, $notification);
+
+    Twilio::assertSentCount(1);
+    Twilio::assertSent(fn ($message) => $message->to === '+18085550000' &&
         $message->body === 'Test notification message');
 });
