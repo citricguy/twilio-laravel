@@ -1,6 +1,7 @@
 <?php
 
 use Citricguy\TwilioLaravel\Events\TwilioCallQueued;
+use Citricguy\TwilioLaravel\Events\TwilioCallSending;
 use Citricguy\TwilioLaravel\Events\TwilioCallSent;
 use Citricguy\TwilioLaravel\Facades\Twilio;
 use Illuminate\Support\Facades\Event;
@@ -105,12 +106,12 @@ test('it properly handles call options', function () {
 
 test('it fires TwilioCallSending and can be cancelled', function () {
     $fired = false;
-    \Illuminate\Support\Facades\Event::listen(\Citricguy\TwilioLaravel\Events\TwilioCallSending::class, function ($event) use (&$fired) {
+    Event::listen(TwilioCallSending::class, function ($event) use (&$fired) {
         $fired = true;
         $event->cancel('Testing cancel');
     });
 
-    $result = \Citricguy\TwilioLaravel\Facades\Twilio::makeCall('+1234567890', 'https://example.com/twiml');
+    $result = Twilio::makeCall('+1234567890', 'https://example.com/twiml');
     expect($fired)->toBeTrue();
     expect($result)->toBeFalse();
 });
@@ -118,9 +119,9 @@ test('it fires TwilioCallSending and can be cancelled', function () {
 test('TwilioCallSending listeners are fired when Twilio::fake() is used', function () {
     Twilio::fake();
     $fired = false;
-    \Illuminate\Support\Facades\Event::listen(\Citricguy\TwilioLaravel\Events\TwilioCallSending::class, function () use (&$fired) {
+    Event::listen(TwilioCallSending::class, function () use (&$fired) {
         $fired = true;
     });
-    \Citricguy\TwilioLaravel\Facades\Twilio::makeCall('+1234567890', 'https://example.com/twiml');
+    Twilio::makeCall('+1234567890', 'https://example.com/twiml');
     expect($fired)->toBeTrue();
 });

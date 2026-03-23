@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Mockery;
 use Symfony\Component\HttpFoundation\HeaderBag;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Security tests for Twilio webhook handling
@@ -119,7 +120,7 @@ it('rejects requests with manipulated urls', function () {
     try {
         $middleware->handle($request, $next);
         $this->fail('Expected abort was not called');
-    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+    } catch (HttpException $e) {
         expect($e->getStatusCode())->toBe(403);
     }
 });

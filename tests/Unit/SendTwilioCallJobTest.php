@@ -5,6 +5,7 @@ namespace Citricguy\TwilioLaravel\Tests\Unit;
 use Citricguy\TwilioLaravel\Events\TwilioCallSending;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioCall;
 use Citricguy\TwilioLaravel\Services\TwilioService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 
@@ -129,5 +130,5 @@ it('passes options through to the service', function () {
 it('implements ShouldQueue interface', function () {
     $job = new SendTwilioCall('+12345678901', 'https://example.com/twiml');
 
-    expect($job)->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
+    expect($job)->toBeInstanceOf(ShouldQueue::class);
 });

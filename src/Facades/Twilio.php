@@ -2,6 +2,7 @@
 
 namespace Citricguy\TwilioLaravel\Facades;
 
+use Citricguy\TwilioLaravel\Services\TwilioService;
 use Citricguy\TwilioLaravel\Testing\TwilioServiceFake;
 use Illuminate\Support\Facades\Facade;
 
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static void assertCallCount(int $count)
  * @method static void assertNoCalls()
  *
- * @see \Citricguy\TwilioLaravel\Services\TwilioService
+ * @see TwilioService
  */
 class Twilio extends Facade
 {

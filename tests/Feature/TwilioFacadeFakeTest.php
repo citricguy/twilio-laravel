@@ -1,13 +1,15 @@
 <?php
 
 use Citricguy\TwilioLaravel\Events\TwilioMessageQueued;
+use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
 use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
 use Citricguy\TwilioLaravel\Facades\Twilio;
 use Citricguy\TwilioLaravel\Testing\TwilioServiceFake;
 use Illuminate\Support\Facades\Event;
+use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\AssertionFailedError;
 
-uses(\Orchestra\Testbench\TestCase::class)->in('Feature');
+uses(TestCase::class)->in('Feature');
 
 beforeEach(function () {
     Twilio::fake();
@@ -127,12 +129,12 @@ test('it properly handles StatusCallback option', function () {
 
 test('it fires TwilioMessageSending and can be cancelled', function () {
     $fired = false;
-    \Illuminate\Support\Facades\Event::listen(\Citricguy\TwilioLaravel\Events\TwilioMessageSending::class, function ($event) use (&$fired) {
+    Event::listen(TwilioMessageSending::class, function ($event) use (&$fired) {
         $fired = true;
         $event->cancel('Testing cancel');
     });
 
-    $result = \Citricguy\TwilioLaravel\Facades\Twilio::sendMessage('+1234567890', 'Test message');
+    $result = Twilio::sendMessage('+1234567890', 'Test message');
     expect($fired)->toBeTrue();
     expect($result)->toBeFalse();
 });
@@ -140,9 +142,9 @@ test('it fires TwilioMessageSending and can be cancelled', function () {
 test('TwilioMessageSending listeners are fired when Twilio::fake() is used', function () {
     Twilio::fake();
     $fired = false;
-    \Illuminate\Support\Facades\Event::listen(\Citricguy\TwilioLaravel\Events\TwilioMessageSending::class, function () use (&$fired) {
+    Event::listen(TwilioMessageSending::class, function () use (&$fired) {
         $fired = true;
     });
-    \Citricguy\TwilioLaravel\Facades\Twilio::sendMessage('+1234567890', 'Test message');
+    Twilio::sendMessage('+1234567890', 'Test message');
     expect($fired)->toBeTrue();
 });

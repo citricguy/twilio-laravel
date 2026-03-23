@@ -7,6 +7,7 @@ use Citricguy\TwilioLaravel\Events\TwilioCallSending;
 use Citricguy\TwilioLaravel\Events\TwilioCallSent;
 use Citricguy\TwilioLaravel\Events\TwilioMessageQueued;
 use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
+use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
 use Citricguy\TwilioLaravel\Services\TwilioService;
 use PHPUnit\Framework\Assert as PHPUnit;
 
@@ -150,7 +151,7 @@ class TwilioServiceFake extends TwilioService
                 $options
             ));
         } else {
-            event(new \Citricguy\TwilioLaravel\Events\TwilioMessageSent(
+            event(new TwilioMessageSent(
                 $messageSid,
                 $to,
                 $message,

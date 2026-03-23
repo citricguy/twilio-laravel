@@ -9,6 +9,9 @@ use Citricguy\TwilioLaravel\Services\TwilioService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
+use Twilio\Rest\Api\V2010\Account\MessageInstance;
+use Twilio\Rest\Api\V2010\Account\MessageList;
+use Twilio\Rest\Client;
 
 beforeEach(function () {
     // Set test credentials to prevent client creation error
@@ -28,7 +31,7 @@ it('can cancel a message before sending', function () {
     $service = new TwilioService;
 
     // Mock the Twilio client to ensure it's not called
-    $mockClient = Mockery::mock(\Twilio\Rest\Client::class);
+    $mockClient = Mockery::mock(Client::class);
     // The messages->create method should never be called
     $mockClient->shouldNotReceive('messages');
 
@@ -96,18 +99,18 @@ it('cancels messages in the job if cancelled at execution time', function () {
 
 it('allows sending when not cancelled', function () {
     // Create a mock message instance
-    $mockMessage = Mockery::mock(\Twilio\Rest\Api\V2010\Account\MessageInstance::class);
+    $mockMessage = Mockery::mock(MessageInstance::class);
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
     // Create a mock message list
-    $mockMessageList = Mockery::mock(\Twilio\Rest\Api\V2010\Account\MessageList::class);
+    $mockMessageList = Mockery::mock(MessageList::class);
     $mockMessageList->shouldReceive('create')
         ->once()
         ->andReturn($mockMessage);
 
     // Mock the Twilio client
-    $mockClient = Mockery::mock(\Twilio\Rest\Client::class);
+    $mockClient = Mockery::mock(Client::class);
     $mockClient->messages = $mockMessageList;
 
     $service = new TwilioService;
@@ -143,7 +146,7 @@ it('works with multiple listeners where one cancels', function () {
     $service = new TwilioService;
 
     // Mock the Twilio client to ensure it's not called
-    $mockClient = Mockery::mock(\Twilio\Rest\Client::class);
+    $mockClient = Mockery::mock(Client::class);
     $mockClient->shouldNotReceive('messages');
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');

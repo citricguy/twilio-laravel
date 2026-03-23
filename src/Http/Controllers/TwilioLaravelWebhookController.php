@@ -3,6 +3,7 @@
 namespace Citricguy\TwilioLaravel\Http\Controllers;
 
 use Citricguy\TwilioLaravel\Events\TwilioWebhookReceived;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +13,7 @@ class TwilioLaravelWebhookController
     /**
      * Handle the incoming Twilio webhook request.
      */
-    public function __invoke(Request $request): Response|\Illuminate\Http\JsonResponse
+    public function __invoke(Request $request): Response|JsonResponse
     {
         $payload = $request->all();
 

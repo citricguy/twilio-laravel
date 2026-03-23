@@ -11,6 +11,7 @@ use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioCall;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioMessage;
 use Illuminate\Support\Facades\Log;
+use Twilio\Rest\Client;
 use Twilio\Rest\Client as TwilioClient;
 
 class TwilioService
@@ -18,7 +19,7 @@ class TwilioService
     /**
      * Twilio client instance.
      *
-     * @var \Twilio\Rest\Client
+     * @var Client
      */
     protected $client;
 

@@ -9,6 +9,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Config;
 use Mockery;
 use Symfony\Component\HttpFoundation\HeaderBag;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 it('passes validation with valid signature', function () {
     // Set test auth token
@@ -73,7 +74,7 @@ it('rejects invalid signature', function () {
     try {
         $middleware->handle($request, $next);
         $this->fail('Expected abort was not called');
-    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+    } catch (HttpException $e) {
         expect($e->getStatusCode())->toBe(403);
     }
 });

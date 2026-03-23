@@ -86,6 +86,14 @@ You can install the package via composer:
 composer require citricguy/twilio-laravel
 ```
 
+## Requirements / Support
+
+- PHP: `^8.3`
+- Laravel: `12.x` and `13.x`
+- Orchestra Testbench: `10.x` for Laravel `12.x`, `11.x` for Laravel `13.x`
+
+`composer.lock` is not tracked in this package repository, so downstream installs resolve fresh dependency versions from the published Composer constraints.
+
 ## Configuration
 
 Publish the configuration file:
@@ -99,23 +107,25 @@ This will create a `config/twilio-laravel.php` file in your app where you can mo
 Add the following environment variables to your `.env` file:
 
 ```
-TWILIO_SID=your-twilio-account-sid
-TWILIO_TOKEN=your-twilio-auth-token
+TWILIO_ACCOUNT_SID=your-twilio-account-sid
+TWILIO_AUTH_TOKEN=your-twilio-auth-token
 TWILIO_FROM=+1234567890
 TWILIO_WEBHOOK_PATH=/api/twilio/webhook
 TWILIO_DEBUG=false
+TWILIO_VALIDATE_WEBHOOK=true
 # If using a Messaging Service instead of a sender phone number
 TWILIO_MESSAGING_SERVICE_SID=your-messaging-service-sid
 ```
+
+If you are upgrading from an older install, `TWILIO_VALIDATE_WEBHOOK_SIGNATURE` is still honored for backward compatibility. `TWILIO_VALIDATE_WEBHOOK` is the canonical key going forward.
 
 ### Sender Configuration
 
 When sending messages, the package determines the sender using the following priority order:
 
 1. The `from` parameter in the options array passed to the `sendMessage` method
-2. The messaging service SID in the options array (`messagingServiceSid`)
-3. The messaging service SID from your config (set via `TWILIO_MESSAGING_SERVICE_SID` in .env)
-4. The default sender number from your config (set via `TWILIO_FROM` in .env)
+2. The messaging service SID from your config (set via `TWILIO_MESSAGING_SERVICE_SID` in `.env`)
+3. The default sender number from your config (set via `TWILIO_FROM` in `.env`)
 
 If none of these are provided, an exception will be thrown indicating that no valid sender is configured.
 
@@ -124,8 +134,8 @@ Example usage with different sender options:
 // Uses the 'from' parameter directly
 Twilio::sendMessage('+1234567890', 'Message with custom from', ['from' => '+15551234567']);
 
-// Uses a specific messaging service
-Twilio::sendMessage('+1234567890', 'Message via messaging service', ['messagingServiceSid' => 'MG123456789']);
+// Uses the messaging service configured in .env / config
+Twilio::sendMessage('+1234567890', 'Message via messaging service');
 
 // Uses the default configuration from .env
 Twilio::sendMessage('+1234567890', 'Message with default sender');
@@ -185,7 +195,7 @@ Twilio::sendMessage(
 Twilio::sendMessage(
     '+1234567890',
     'Track message delivery!',
-    ['StatusCallback' => 'https://yourdomain.com/webhooks/twilio/status-updates']
+    ['statusCallback' => 'https://yourdomain.com/webhooks/twilio/status-updates']
 );
 
 // Custom queue options
@@ -366,7 +376,7 @@ The package is designed to handle both immediate responses and background proces
 1. When a webhook arrives, the controller dispatches the `TwilioWebhookReceived` event
 2. Your listener processes the event and can optionally return a Response object
 3. If your listener returns a Response, the controller will return it to Twilio
-4. If no Response is returned, the controller sends a default 202 Accepted response
+4. If no Response is returned, the controller sends a default `202 Accepted` JSON response
 
 This approach allows you to:
 - Return TwiML responses for voice calls (which require immediate responses)
@@ -952,6 +962,8 @@ TWILIO_VALIDATE_WEBHOOK=false
 
 This is not recommended for production.
 
+If you are upgrading from the last tagged release and already use `TWILIO_VALIDATE_WEBHOOK_SIGNATURE`, that older env key is still supported.
+
 ### Webhook Validation Explained
 
 When Twilio sends a webhook, it includes an `X-Twilio-Signature` header that's generated based on:
@@ -1091,8 +1103,7 @@ public function test_voice_call_returns_twiml()
     // Disable signature validation for testing
     config(['twilio-laravel.validate_webhook' => false]);
     
-    // Use real event dispatching to test the full flow
-    Event::fake([TwilioWebhookReceived::class]);
+    // Use the real event dispatcher so listeners can return a response
     
     // Send a voice webhook
     $response = $this->postJson(config('twilio-laravel.webhook_path'), [
@@ -1122,6 +1133,8 @@ public function routeNotificationForTwilioSms($notification)
     return $this->phone_number; // Replace with your phone field
 }
 ```
+
+Laravel's generic `routeNotificationFor('twilioSms', $notification)` path is also supported.
 
 ### Creating a Notification
 
@@ -1187,7 +1200,6 @@ public function toTwilioSms($notifiable)
     return (new TwilioSmsMessage)
         ->content('Your message here')
         ->from('+1234567890')                                // Custom sender number
-        ->messagingService('MGXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') // Or use messaging service
         ->mediaUrls(['https://example.com/image.jpg'])       // For MMS
         ->statusCallback('https://example.com/webhook/status') // Status callback URL
         ->options([                                         // Additional custom options
@@ -1196,6 +1208,8 @@ public function toTwilioSms($notifiable)
         ]);
 }
 ```
+
+Use `TWILIO_MESSAGING_SERVICE_SID` in your config / `.env` when you want to send through a messaging service. The current service layer uses the configured messaging service SID, not a per-message override.
 
 ### Simple String Responses
 
@@ -1241,6 +1255,8 @@ public function routeNotificationForTwilioCall($notification)
     return $this->phone_number; // Replace with your phone field
 }
 ```
+
+Laravel's generic `routeNotificationFor('twilioCall', $notification)` path is also supported.
 
 ### Creating a Call Notification
 
