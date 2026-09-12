@@ -1,6 +1,6 @@
 # Upgrading from 2.x to 3.x
 
-3.0.0 is the next planned major release; it has not been tagged. There is no 2.x backport of this work. Applications constrained to `^2.0` will not receive it automatically.
+3.0.0 is a major release. There is no 2.x backport of this work. Applications constrained to `^2.0` will not receive it automatically.
 
 ## Requirements
 

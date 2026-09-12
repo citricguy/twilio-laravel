@@ -78,7 +78,7 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, voice calls, notifi
   - [Credits](#credits)
   - [License](#license)
 
-> Preparing 3.0.0: see the [upgrade guide](docs/UPGRADING.md), [application review prompt](docs/APPLICATION_REVIEW_PROMPT.md), and [validation report](docs/VALIDATION.md). The new major has not been tagged.
+> Upgrading to 3.0.0: see the [upgrade guide](docs/UPGRADING.md), [application review prompt](docs/APPLICATION_REVIEW_PROMPT.md), and [validation report](docs/VALIDATION.md).
 
 ## Installation
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 3.0.0
+## 3.0.0 — 2026-09-12
 
 ### Requirements
 
@@ -25,7 +25,7 @@
 - PHP 8.4/8.5 and lowest-dependency CI, PHPStan level 9, 95% coverage gate, dependency audits/review, workflow validation and Dependabot.
 - Upgrade guidance and a repeatable consumer-manifest compatibility check.
 
-See [the upgrade guide](docs/UPGRADING.md) for application impact. No 2.x backport is included; no release has been tagged.
+See [the upgrade guide](docs/UPGRADING.md) for application impact. No 2.x backport is included.
 
 ### Sending-listener options
 
