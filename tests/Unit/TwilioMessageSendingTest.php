@@ -6,6 +6,7 @@ use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
 use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioMessage;
 use Citricguy\TwilioLaravel\Services\TwilioService;
+use Citricguy\TwilioLaravel\Tests\Support\TransportTwilioService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
@@ -36,7 +37,7 @@ it('can cancel a message before sending', function () {
     $mockClient->shouldNotReceive('messages');
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Try to send a message
@@ -78,9 +79,7 @@ it('can cancel a queued message before adding to queue', function () {
 });
 
 it('cancels messages in the job if cancelled at execution time', function () {
-    // Mock TwilioService to verify sendMessageNow is not called if cancelled
-    $mockService = Mockery::mock(TwilioService::class);
-    $mockService->shouldNotReceive('sendMessageNow');
+    $mockService = new TransportTwilioService;
 
     // Create the job
     $job = new SendTwilioMessage('+1234567890', 'This should be cancelled', []);
@@ -92,14 +91,14 @@ it('cancels messages in the job if cancelled at execution time', function () {
 
     // Execute the job
     $job->handle($mockService);
+    expect($mockService->transport->requests)->toBe([]);
 
-    // The test passes if mockService's sendMessageNow is not called
-    // (which is verified by shouldNotReceive above)
 });
 
 it('allows sending when not cancelled', function () {
     // Create a mock message instance
     $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->numSegments = null;
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
@@ -117,7 +116,7 @@ it('allows sending when not cancelled', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Configure a default from number
@@ -150,7 +149,7 @@ it('works with multiple listeners where one cancels', function () {
     $mockClient->shouldNotReceive('messages');
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Try to send a message

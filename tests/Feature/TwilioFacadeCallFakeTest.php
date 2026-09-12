@@ -113,7 +113,7 @@ test('it fires TwilioCallSending and can be cancelled', function () {
 
     $result = Twilio::makeCall('+1234567890', 'https://example.com/twiml');
     expect($fired)->toBeTrue();
-    expect($result)->toBeFalse();
+    expect($result)->toMatchArray(['status' => 'cancelled', 'reason' => 'Testing cancel']);
 });
 
 test('TwilioCallSending listeners are fired when Twilio::fake() is used', function () {

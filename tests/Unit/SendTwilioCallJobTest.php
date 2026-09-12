@@ -5,6 +5,7 @@ namespace Citricguy\TwilioLaravel\Tests\Unit;
 use Citricguy\TwilioLaravel\Events\TwilioCallSending;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioCall;
 use Citricguy\TwilioLaravel\Services\TwilioService;
+use Citricguy\TwilioLaravel\Tests\Support\TransportTwilioService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
@@ -38,9 +39,8 @@ it('can be constructed with additional options', function () {
 it('fires TwilioCallSending event when handled', function () {
     Event::fake([TwilioCallSending::class]);
 
-    $twilioService = mock(TwilioService::class);
-    $twilioService->expects('makeCallNow')
-        ->with('+12345678901', 'https://example.com/twiml', []);
+    $twilioService = new TransportTwilioService;
+    config(['twilio-laravel.from' => '+19876543210']);
 
     $job = new SendTwilioCall('+12345678901', 'https://example.com/twiml');
     $job->handle($twilioService);
@@ -67,11 +67,11 @@ it('does not make call when sending event is cancelled', function () {
         $event->cancel('Test cancellation');
     });
 
-    $twilioService = mock(TwilioService::class);
-    $twilioService->shouldNotReceive('makeCallNow');
+    $twilioService = new TransportTwilioService;
 
     $job = new SendTwilioCall('+12345678901', 'https://example.com/twiml');
     $job->handle($twilioService);
+    expect($twilioService->transport->requests)->toBe([]);
 });
 
 it('logs cancellation when debug mode is enabled', function () {
@@ -83,15 +83,13 @@ it('logs cancellation when debug mode is enabled', function () {
 
     Log::shouldReceive('info')
         ->once()
-        ->with('Twilio: Queued call cancelled', [
-            'to' => '+12345678901',
-            'reason' => 'Test cancellation reason',
-        ]);
+        ->with('Twilio: Call cancelled', ['has_reason' => true]);
 
-    $twilioService = mock(TwilioService::class);
+    $twilioService = new TransportTwilioService;
 
     $job = new SendTwilioCall('+12345678901', 'https://example.com/twiml');
     $job->handle($twilioService);
+    expect($twilioService->transport->requests)->toBe([]);
 });
 
 it('does not log cancellation when debug mode is disabled', function () {
@@ -103,10 +101,11 @@ it('does not log cancellation when debug mode is disabled', function () {
 
     Log::shouldReceive('info')->never();
 
-    $twilioService = mock(TwilioService::class);
+    $twilioService = new TransportTwilioService;
 
     $job = new SendTwilioCall('+12345678901', 'https://example.com/twiml');
     $job->handle($twilioService);
+    expect($twilioService->transport->requests)->toBe([]);
 });
 
 it('passes options through to the service', function () {

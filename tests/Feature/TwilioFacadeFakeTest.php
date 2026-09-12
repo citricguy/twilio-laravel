@@ -136,7 +136,7 @@ test('it fires TwilioMessageSending and can be cancelled', function () {
 
     $result = Twilio::sendMessage('+1234567890', 'Test message');
     expect($fired)->toBeTrue();
-    expect($result)->toBeFalse();
+    expect($result)->toMatchArray(['status' => 'cancelled', 'reason' => 'Testing cancel']);
 });
 
 test('TwilioMessageSending listeners are fired when Twilio::fake() is used', function () {

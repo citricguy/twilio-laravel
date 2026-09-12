@@ -41,80 +41,104 @@ class TwilioServiceFake extends TwilioService
      * Send an SMS message (fake implementation).
      *
      * @param array<string, mixed> $options
-     * @return array<string, mixed>|false
+     * @return array<string, mixed>
      */
     public function sendMessage(string $to, string $message, array $options = [])
     {
-        // Fire TwilioMessageSending event (for listeners/cancellation)
-        $event = new TwilioMessageSending($to, $message, $options);
-        event($event);
-        if ($event->cancelled()) {
-            return false;
-        }
-
-        return $this->recordMessage('queued', $to, $message, $options);
+        return config('twilio-laravel.queue_messages', true)
+            ? $this->queueMessage($to, $message, $options)
+            : $this->sendMessageNow($to, $message, $options);
     }
 
     /**
-     * Send an SMS message immediately (fake implementation).
+     * Record an immediate message after checking cancellation.
      *
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
     public function sendMessageNow(string $to, string $message, array $options = [])
     {
-        return $this->recordMessage('sent', $to, $message, $options);
+        return $this->sendFakeMessage('sent', $to, $message, $options);
     }
 
     /**
-     * Queue an SMS message for sending (fake implementation).
+     * Record a queued message after checking cancellation.
      *
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
     public function queueMessage(string $to, string $message, array $options = [])
     {
-        return $this->recordMessage('queued', $to, $message, $options);
+        return $this->sendFakeMessage('queued', $to, $message, $options);
     }
 
     /**
-     * Make a voice call (fake implementation).
+     * Apply the same message cancellation contract as the real service.
      *
      * @param array<string, mixed> $options
-     * @return array<string, mixed>|false
+     * @return array<string, mixed>
+     */
+    private function sendFakeMessage(string $type, string $to, string $message, array $options): array
+    {
+        $event = new TwilioMessageSending($to, $message, $options);
+        event($event);
+        if ($event->cancelled()) {
+            return ['status' => 'cancelled', 'to' => $to, 'reason' => $event->cancellationReason()];
+        }
+
+        return $this->recordMessage($type, $to, $message, $event->options);
+    }
+
+    /**
+     * Record a call using the configured queue mode.
+     *
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
     public function makeCall(string $to, string $url, array $options = [])
     {
-        // Fire TwilioCallSending event (for listeners/cancellation)
-        $event = new TwilioCallSending($to, $url, $options);
-        event($event);
-        if ($event->cancelled()) {
-            return false;
-        }
-
-        return $this->recordCall('queued', $to, $url, $options);
+        return config('twilio-laravel.queue_messages', true)
+            ? $this->queueCall($to, $url, $options)
+            : $this->makeCallNow($to, $url, $options);
     }
 
     /**
-     * Make a voice call immediately (fake implementation).
+     * Record a call using the configured queue mode.
      *
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
     public function makeCallNow(string $to, string $url, array $options = [])
     {
-        return $this->recordCall('initiated', $to, $url, $options);
+        return $this->sendFakeCall('initiated', $to, $url, $options);
     }
 
     /**
-     * Queue a voice call for sending (fake implementation).
+     * Record a queued call after checking cancellation.
      *
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
     public function queueCall(string $to, string $url, array $options = [])
     {
-        return $this->recordCall('queued', $to, $url, $options);
+        return $this->sendFakeCall('queued', $to, $url, $options);
+    }
+
+    /**
+     * Apply the same call cancellation contract as the real service.
+     *
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private function sendFakeCall(string $type, string $to, string $url, array $options): array
+    {
+        $event = new TwilioCallSending($to, $url, $options);
+        event($event);
+        if ($event->cancelled()) {
+            return ['status' => 'cancelled', 'to' => $to, 'reason' => $event->cancellationReason()];
+        }
+
+        return $this->recordCall($type, $to, $url, $event->options);
     }
 
     /**
@@ -227,14 +251,14 @@ class TwilioServiceFake extends TwilioService
         }
 
         if ($callback === null) {
-            PHPUnit::assertTrue(true);
+            PHPUnit::assertNotEmpty($this->messages);
 
             return;
         }
 
         foreach ($this->messages as $message) {
             if ($callback($message)) {
-                PHPUnit::assertTrue(true);
+                PHPUnit::assertNotEmpty($this->messages);
 
                 return;
             }
@@ -294,14 +318,14 @@ class TwilioServiceFake extends TwilioService
         }
 
         if ($callback === null) {
-            PHPUnit::assertTrue(true);
+            PHPUnit::assertNotEmpty($this->calls);
 
             return;
         }
 
         foreach ($this->calls as $call) {
             if ($callback($call)) {
-                PHPUnit::assertTrue(true);
+                PHPUnit::assertNotEmpty($this->calls);
 
                 return;
             }

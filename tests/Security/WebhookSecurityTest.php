@@ -6,8 +6,6 @@ use Citricguy\TwilioLaravel\Helpers\WebhookSignatureHelper;
 use Citricguy\TwilioLaravel\Http\Middleware\VerifyTwilioWebhook;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Mockery;
-use Symfony\Component\HttpFoundation\HeaderBag;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -95,18 +93,7 @@ it('rejects requests with manipulated urls', function () {
     $validSignature = WebhookSignatureHelper::generateValidSignature($originalUrl, $params, 'test_auth_token');
 
     // Create a request that pretends to be from a different URL but with the same signature
-    $request = Mockery::mock('Illuminate\Http\Request');
-    $request->shouldReceive('isMethod')->with('post')->andReturn(true);
-    $request->shouldReceive('post')->andReturn($params);
-    $request->shouldReceive('header')->with('X-Twilio-Signature')->andReturn($validSignature);
-    $request->shouldReceive('getContent')->andReturn('');
-    $request->shouldReceive('method')->andReturn('POST');
-    $request->shouldReceive('query')->andReturn([]);
-
-    $request->headers = new HeaderBag([]);
-
-    // This is the key part - fullUrl() returns a different URL than what was used to generate the signature
-    $request->shouldReceive('fullUrl')->andReturn('https://manipulated-domain.com'.$webhookPath);
+    $request = Request::create('https://manipulated-domain.com'.$webhookPath, 'POST', $params, server: ['HTTP_X_TWILIO_SIGNATURE' => $validSignature]);
 
     // Create the middleware
     $middleware = new VerifyTwilioWebhook;

@@ -27,7 +27,7 @@ it('queues calls when queuing is enabled', function () {
 
     $mockClient = Mockery::mock(Client::class);
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $service->makeCall('+12345678901', 'https://example.com/twiml');
@@ -64,7 +64,7 @@ it('makes calls immediately when queuing is disabled', function () {
     $mockClient->calls = $mockCallList;
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $result = $service->makeCall('+12345678901', 'https://example.com/twiml');
@@ -97,7 +97,7 @@ it('allows customizing the from number for calls', function () {
     $mockClient->calls = $mockCallList;
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $service->makeCall('+12345678901', 'https://example.com/twiml', [
@@ -117,7 +117,7 @@ it('throws exception when no sender is configured for calls', function () {
     $mockClient->calls = $mockCallList;
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $service->makeCall('+12345678901', 'https://example.com/twiml');
@@ -145,7 +145,7 @@ it('includes status callback in call options', function () {
     $mockClient->calls = $mockCallList;
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $service->makeCall('+12345678901', 'https://example.com/twiml', [
@@ -176,7 +176,7 @@ it('includes recording option in call', function () {
     $mockClient->calls = $mockCallList;
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $service->makeCall('+12345678901', 'https://example.com/twiml', [
@@ -206,7 +206,7 @@ it('includes timeout option in call', function () {
     $mockClient->calls = $mockCallList;
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $service->makeCall('+12345678901', 'https://example.com/twiml', [
@@ -230,7 +230,7 @@ it('handles call api exceptions and rethrows', function () {
     $mockClient->calls = $mockCallList;
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $service->makeCall('+12345678901', 'https://example.com/twiml');
@@ -258,7 +258,7 @@ it('includes status callback events in call', function () {
     $mockClient->calls = $mockCallList;
 
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     $service->makeCall('+12345678901', 'https://example.com/twiml', [

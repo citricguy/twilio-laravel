@@ -1,7 +1,12 @@
 {
     "name": "citricguy/twilio-laravel",
     "description": "A Laravel package to integrate Twilio for SMS/MMS messaging, notifications, and webhooks. This package leverages the official Twilio PHP SDK and adheres to Laravel conventions, providing a seamless, queued, and event-driven solution for sending messages and processing incoming Twilio callbacks. Ideal for modern Laravel projects needing robust Twilio integration.",
-    "keywords": ["laravel", "twilio", "sms", "mms"],
+    "keywords": [
+        "laravel",
+        "twilio",
+        "sms",
+        "mms"
+    ],
     "homepage": "https://github.com/citricguy/twilio-laravel",
     "license": "MIT",
     "authors": [
@@ -15,19 +20,20 @@
         "source": "https://github.com/citricguy/twilio-laravel"
     },
     "require": {
-        "php": "^8.3",
-        "illuminate/contracts": "^12.0 || ^13.0",
-        "illuminate/support": "^12.0 || ^13.0",
-        "twilio/sdk": "^8.4"
+        "php": "^8.4",
+        "ext-curl": "*",
+        "ext-mbstring": "*",
+        "laravel/framework": "^13.23",
+        "twilio/sdk": "^8.12.1"
     },
     "require-dev": {
-        "larastan/larastan": "^3.9",
-        "laravel/pint": "^1.27",
-        "nunomaduro/collision": "^8.8",
-        "orchestra/testbench": "^10.0 || ^11.0",
-        "pestphp/pest": "^4.0",
-        "pestphp/pest-plugin-arch": "^4.0",
-        "pestphp/pest-plugin-laravel": "^4.0"
+        "larastan/larastan": "^3.12",
+        "laravel/pint": "^1.32",
+        "nunomaduro/collision": "^8.9.5",
+        "orchestra/testbench": "^11.2",
+        "pestphp/pest": "^5.1",
+        "pestphp/pest-plugin-arch": "^5.0",
+        "pestphp/pest-plugin-laravel": "^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -45,7 +51,7 @@
         "analyse": "vendor/bin/phpstan analyse",
         "test:analyse": "vendor/bin/phpstan analyse --no-progress",
         "test": "vendor/bin/pest",
-        "test:coverage": "vendor/bin/pest --coverage"
+        "test:coverage": "vendor/bin/pest --coverage --min=95"
     },
     "config": {
         "sort-packages": true,

@@ -1,4 +1,4 @@
-# Twilio for Laravel (Unoffical)
+# Twilio for Laravel (Unofficial)
 
 <p align="center">
   <a href="https://packagist.org/packages/citricguy/twilio-laravel" target="_blank">
@@ -13,7 +13,7 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, voice calls, notifi
 
 ## 📋 Table of Contents
 
-- [Twilio for Laravel (Unoffical)](#twilio-for-laravel-unoffical)
+- [Twilio for Laravel (Unofficial)](#twilio-for-laravel-unoffical)
   - [📋 Table of Contents](#-table-of-contents)
   - [Installation](#installation)
   - [Configuration](#configuration)
@@ -78,19 +78,24 @@ A Laravel package to integrate Twilio for SMS/MMS messaging, voice calls, notifi
   - [Credits](#credits)
   - [License](#license)
 
+> Preparing 3.0.0: see the [upgrade guide](docs/UPGRADING.md), [application review prompt](docs/APPLICATION_REVIEW_PROMPT.md), and [validation report](docs/VALIDATION.md). The new major has not been tagged.
+
 ## Installation
+
+Once 3.0.0 is released:
 
 You can install the package via composer:
 
 ```bash
-composer require citricguy/twilio-laravel
+composer require citricguy/twilio-laravel:^3.0
 ```
 
 ## Requirements / Support
 
-- PHP: `^8.3`
-- Laravel: `12.x` and `13.x`
-- Orchestra Testbench: `10.x` for Laravel `12.x`, `11.x` for Laravel `13.x`
+- PHP: `^8.4` (tested on PHP 8.4 and 8.5), with curl and mbstring.
+- Laravel: `^13.23`. The full framework is required because jobs/events use Foundation traits.
+- Twilio SDK: `^8.12.1`.
+- Development: Pest 5, Orchestra Testbench 11, Larastan/PHPStan level 9, and Pint.
 
 `composer.lock` is not tracked in this package repository, so downstream installs resolve fresh dependency versions from the published Composer constraints.
 
@@ -124,8 +129,9 @@ If you are upgrading from an older install, `TWILIO_VALIDATE_WEBHOOK_SIGNATURE` 
 When sending messages, the package determines the sender using the following priority order:
 
 1. The `from` parameter in the options array passed to the `sendMessage` method
-2. The messaging service SID from your config (set via `TWILIO_MESSAGING_SERVICE_SID` in `.env`)
-3. The default sender number from your config (set via `TWILIO_FROM` in `.env`)
+2. The `messagingServiceSid` parameter in that options array
+3. The messaging service SID from your config (set via `TWILIO_MESSAGING_SERVICE_SID` in `.env`)
+4. The default sender number from your config (set via `TWILIO_FROM` in `.env`)
 
 If none of these are provided, an exception will be thrown indicating that no valid sender is configured.
 
@@ -142,6 +148,10 @@ Twilio::sendMessage('+1234567890', 'Message with default sender');
 ```
 
 ### Debug Mode
+
+Package logs use fixed messages and safe counts/booleans. They do not dump webhook payloads, request headers, URLs, signatures, credentials, phone numbers, provider identifiers, outbound options, cancellation reasons or exception messages. Debugging includes successful verification, webhook field counts, outbound option counts, cancellation presence and error categories/codes.
+
+Events and cancellation results retain their application data, and SDK exceptions are still rethrown. Review application listeners, exception reporting, queue storage and independent SDK diagnostics separately. Do not replace removed log fields with payload dumps in application code.
 
 The `TWILIO_DEBUG` environment variable can be used to enable or disable debug mode. When debug mode is enabled (`TWILIO_DEBUG=true`), additional logging and debugging information will be available to help troubleshoot issues. It is recommended to keep debug mode disabled (`TWILIO_DEBUG=false`) in production environments.
 
@@ -284,6 +294,8 @@ A key feature of this package is its ability to receive and handle webhooks from
 
 ### Webhook Types
 
+Voice requests with `CallbackSource=call-progress-events` are status callbacks even when `CallStatus` is `ringing` or `in-progress`. Without that marker, the existing status-based inbound classification remains.
+
 The package automatically detects different types of Twilio webhooks and categorizes them to make handling easier:
 
 | Type | Constant | Description | Example |
@@ -358,12 +370,12 @@ class HandleTwilioWebhook
         // Other webhook types can be handled without returning a response
         if ($event->isInboundSms()) {
             // Process the SMS...
-            Log::info("SMS received: " . ($event->payload['Body'] ?? ''));
+            Log::info('Twilio inbound SMS received');
         }
         
         if ($event->isMessageStatusUpdate()) {
             // Handle status update...
-            Log::info("Message status: " . $event->getStatusType());
+            Log::info('Twilio message status callback received');
         }
     }
 }
@@ -374,8 +386,8 @@ class HandleTwilioWebhook
 The package is designed to handle both immediate responses and background processing:
 
 1. When a webhook arrives, the controller dispatches the `TwilioWebhookReceived` event
-2. Your listener processes the event and can optionally return a Response object
-3. If your listener returns a Response, the controller will return it to Twilio
+2. Your listener processes the event and can optionally return a Symfony-compatible Response object (including Laravel Response and JsonResponse)
+3. The first such listener response is returned to Twilio unchanged; later response values are ignored
 4. If no Response is returned, the controller sends a default `202 Accepted` JSON response
 
 This approach allows you to:
@@ -384,6 +396,10 @@ This approach allows you to:
 - Optionally queue time-consuming processing for any webhook type
 
 ## Events
+
+Immediate sends fire the sending event once. Queued sends fire it before enqueue and once per worker attempt. Cancellation is checked at each of those boundaries; retries can invoke listeners again. Make listener side effects safe for retries. Queue jobs delegate the worker check to the service.
+
+The existing `segmentsCount` field prefers a positive SDK count after sending. When Twilio reports zero or no count (including initially queued Messaging Service messages), it falls back to the prior rough `ceil(mb_strlen(body) / 153)` estimate. Queued and fake events also use that estimate. It is not encoding-aware and must not be treated as a final billing count.
 
 This package provides several events you can listen for in your application:
 
@@ -496,9 +512,7 @@ class LogTwilioMessageQueued
         
         // Example 2: Add custom logging
         Log::channel('sms')->info('SMS queued for sending', [
-            'to' => $event->to,
-            'segments' => $event->segmentsCount,
-            'queue' => $event->options['queue'] ?? 'default',
+            'operation' => 'message-queued',
         ]);
         
         // Example 3: Notify admin of high-priority messages
@@ -519,17 +533,9 @@ namespace App\Listeners;
 
 use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
 use App\Models\SmsMessage;
-use App\Services\BillingService;
 
 class LogTwilioMessageSent
 {
-    protected $billingService;
-    
-    public function __construct(BillingService $billingService)
-    {
-        $this->billingService = $billingService;
-    }
-    
     public function handle(TwilioMessageSent $event)
     {
         // Example 1: Update message status in database
@@ -543,14 +549,8 @@ class LogTwilioMessageSent
             ]
         );
         
-        // Example 2: Track SMS costs for customer billing
-        $this->billingService->trackMessageCost(
-            $event->messageSid,
-            $event->to,
-            $event->segmentsCount,
-            $event->options['customer_id'] ?? null
-        );
-        
+        // Reconcile final Twilio usage before billing. segmentsCount can be an estimate.
+
         // Example 3: Record analytics
         app('analytics')->trackEvent('sms_sent', [
             'to' => $event->to,
@@ -947,7 +947,7 @@ This will give you a public URL that you can use to receive webhooks.
 
 ### Step 4: Test Your Webhook
 
-Send a text message to your Twilio number or make a call to it. You should see the webhook being received in your Laravel logs.
+In a controlled staging test, trigger a Twilio webhook and verify your event listener processed it. With `TWILIO_DEBUG=true`, safe verification and webhook diagnostics are logged; successful requests are quiet by default. Return debugging to false afterward.
 
 ## Webhook Security
 
@@ -966,6 +966,12 @@ If you are upgrading from the last tagged release and already use `TWILIO_VALIDA
 
 ### Webhook Validation Explained
 
+The middleware verifies original form values even when Laravel has trimmed request input. The original query-string order and encoding are preserved. Requests containing `bodySHA256` are validated against the raw body using the SDK; missing/invalid signatures return 403 and a missing auth token returns 500. Existing parameter-signed requests remain supported.
+
+Configure Laravel's trusted proxies for your infrastructure so the scheme, host, port and forwarded prefix reproduce the public URL configured in Twilio. Do not trust arbitrary forwarded headers from the internet. The built-in route remains POST-only; applications may apply the middleware to their own GET routes if needed.
+
+A boolean `twilio-laravel.validate_webhook` takes precedence over `validate_webhook_signature`; if neither is boolean, validation defaults to enabled. Both environment-variable aliases remain supported. The command `php artisan twilio:verify-webhook-setup` displays configuration guidance, not proof of a successful live signature check.
+
 When Twilio sends a webhook, it includes an `X-Twilio-Signature` header that's generated based on:
 - Your Twilio auth token
 - The full URL of your webhook endpoint
@@ -976,6 +982,8 @@ The package verifies this signature to ensure the request is legitimate.
 ## Testing
 
 ### Faking the Twilio Facade
+
+The fake respects `queue_messages`. All six sending/queueing methods run their cancellation listener once; a cancelled result is an array with `status`, `to` and `reason`, and is not recorded. Fake successful results remain arrays and support the existing assertions. The fake does not emulate a real SDK response object or run a queue worker; use a recording SDK HTTP transport for integration tests.
 
 During testing, you'll typically want to avoid making actual API calls to Twilio. The package provides a way to fake the Twilio facade:
 
@@ -1192,6 +1200,8 @@ public function toTwilioSms($notifiable)
 
 ### Additional Options
 
+Options are a mix of the explicitly supported Twilio settings and application metadata; this is not an arbitrary SDK option passthrough. SMS supports `from`, `messagingServiceSid`, `mediaUrls`, `statusCallback` (and legacy `metadata.statusCallback`). Queue controls are `queue` and `delay`. Other values remain available to event listeners.
+
 The `TwilioSmsMessage` class provides a fluent interface for setting various options:
 
 ```php
@@ -1294,6 +1304,8 @@ $user->notify(new EmergencyAlertNotification());
 
 ### Additional Call Options
 
+Calls support `from`, `statusCallback`, `statusCallbackEvent`, `record`, and `timeout`, plus `queue` and `delay`. Additional application metadata is kept in events and is not sent indiscriminately to Twilio.
+
 The `TwilioCallMessage` class provides a fluent interface for setting various options:
 
 ```php
@@ -1323,6 +1335,23 @@ public function toTwilioCall($notifiable)
     return "https://example.com/twiml-instructions";
 }
 ```
+
+## Contributing and checks
+
+```sh
+composer update
+composer validate --strict
+composer check-platform-reqs
+composer audit
+composer test
+composer test:analyse
+composer test:lint
+XDEBUG_MODE=coverage composer test:coverage
+```
+
+Coverage requires Xdebug or PCOV and a minimum of 95% source line coverage. CI runs PHP 8.4/8.5 plus lowest-compatible dependencies, dependency audits/review, workflow validation, and safe offline SDK tests. Dependabot checks Composer and Actions weekly. The library lockfile is intentionally ignored; application lockfiles should be committed in consuming projects.
+
+For the supplied application manifest, run `php8.5 tools/check-consumer.php`; see [the fixture instructions](tests/Fixtures/consumer/README.md). That solver check does not replace tests against actual application code. On PHP 8.5, `bash tools/smoke-consumer.sh` creates a temporary Laravel app, installs the local candidate with Symfony 8.1, tests package discovery/cached boot/notifications/serialized jobs/webhooks using a recording transport, and removes the temporary app. It is also run in CI.
 
 ## Security
 

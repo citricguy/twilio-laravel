@@ -70,6 +70,10 @@ class TwilioWebhookReceived
     {
         // Voice calls
         if (isset($payload['CallSid'])) {
+            if (($payload['CallbackSource'] ?? null) === 'call-progress-events') {
+                return self::TYPE_VOICE_STATUS;
+            }
+
             if (isset($payload['CallStatus']) && is_string($payload['CallStatus'])) {
                 $status = strtolower($payload['CallStatus']);
 

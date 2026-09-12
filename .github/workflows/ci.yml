@@ -2,133 +2,108 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [master]
   pull_request:
-    branches: [main, master]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 9 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         include:
-          - php: '8.3'
-            laravel: '^12.0'
-            testbench: '^10.0'
-            stability: prefer-stable
           - php: '8.4'
-            laravel: '^12.0'
-            testbench: '^10.0'
-            stability: prefer-stable
-          - php: '8.3'
-            laravel: '^13.0'
-            testbench: '^11.0'
-            stability: prefer-stable
+            dependencies: latest
+          - php: '8.5'
+            dependencies: latest
           - php: '8.4'
-            laravel: '^13.0'
-            testbench: '^11.0'
-            stability: prefer-stable
-
-    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }} - Testbench ${{ matrix.testbench }}
-
+            dependencies: lowest
+    name: PHP ${{ matrix.php }} / ${{ matrix.dependencies }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@b604ade2a87db23f8871b7182e69ec5e75effb45 # v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, curl, libxml, mbstring, zip
-          coverage: xdebug
-
-      - name: Get Composer Cache Directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-composer-${{ matrix.php }}-
-
-      - name: Install dependencies
-        run: |
-          composer require "illuminate/contracts:${{ matrix.laravel }}" "illuminate/support:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --dev --no-update
-          composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
-
-      - name: Run tests
-        run: vendor/bin/pest --parallel
-
-  static-analysis:
-    runs-on: ubuntu-latest
-    name: PHPStan (Laravel 13)
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: dom, curl, libxml, mbstring, zip
+          extensions: curl, dom, mbstring, pdo_sqlite, zip
           coverage: none
-
-      - name: Install dependencies
-        run: |
-          composer require "illuminate/contracts:^13.0" "illuminate/support:^13.0" "orchestra/testbench:^11.0" --dev --no-update
-          composer update --prefer-stable --prefer-dist --no-interaction --no-progress
-
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse
-
-  code-style:
-    runs-on: ubuntu-latest
-    name: Code Style
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+          tools: composer:v2
+      - id: cache
+        run: echo "directory=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          php-version: '8.3'
-          extensions: dom, curl, libxml, mbstring, zip
-          coverage: none
-
+          path: ${{ steps.cache.outputs.directory }}
+          key: composer-${{ runner.os }}-${{ matrix.php }}-${{ matrix.dependencies }}-${{ hashFiles('composer.json') }}
       - name: Install dependencies
+        env:
+          DEPENDENCIES: ${{ matrix.dependencies }}
         run: |
-          composer require "illuminate/contracts:^13.0" "illuminate/support:^13.0" "orchestra/testbench:^11.0" --dev --no-update
-          composer update --prefer-stable --prefer-dist --no-interaction --no-progress
-
-      - name: Run Pint
-        run: vendor/bin/pint --test
-
-  coverage:
-    runs-on: ubuntu-latest
-    name: Test Coverage (Laravel 13)
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+          flags=()
+          if [ "$DEPENDENCIES" = lowest ]; then flags+=(--prefer-lowest); fi
+          composer update --prefer-stable --prefer-dist --no-interaction --no-progress "${flags[@]}"
+          composer validate --strict
+          composer check-platform-reqs
+          composer audit
+      - run: vendor/bin/pest --parallel --processes=2 --fail-on-risky --fail-on-warning --log-junit test-results.xml
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
         with:
-          php-version: '8.3'
-          extensions: dom, curl, libxml, mbstring, zip
+          name: tests-${{ matrix.php }}-${{ matrix.dependencies }}
+          path: test-results.xml
+          retention-days: 7
+
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@b604ade2a87db23f8871b7182e69ec5e75effb45 # v2
+        with:
+          php-version: '8.5'
+          extensions: curl, dom, mbstring, pdo_sqlite, zip
           coverage: xdebug
+          tools: composer:v2
+      - run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+      - run: composer test:lint
+      - run: composer test:analyse
+      - name: Smoke test a Laravel 13 consumer
+        run: bash tools/smoke-consumer.sh
+      - run: vendor/bin/pest --coverage --min=95 --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --fail-on-risky --fail-on-warning
+        env:
+          XDEBUG_MODE: coverage
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
 
-      - name: Install dependencies
+  workflows:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate workflows
         run: |
-          composer require "illuminate/contracts:^13.0" "illuminate/support:^13.0" "orchestra/testbench:^11.0" --dev --no-update
-          composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+          curl --fail --silent --show-error --location https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz -o /tmp/actionlint.tar.gz
+          echo '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tar.gz' | sha256sum --check
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -color
 
-      - name: Run tests with coverage
-        run: XDEBUG_MODE=coverage vendor/bin/pest --coverage --min=80
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0

@@ -11,6 +11,8 @@ use Citricguy\TwilioLaravel\Events\TwilioMessageSent;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioCall;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioMessage;
 use Illuminate\Support\Facades\Log;
+use Twilio\Exceptions\RestException;
+use Twilio\Exceptions\TwilioException;
 use Twilio\Rest\Client;
 use Twilio\Rest\Client as TwilioClient;
 
@@ -85,14 +87,12 @@ class TwilioService
             // Fire the sending event and allow for cancellation
             $sendingEvent = new TwilioMessageSending($to, $message, $options);
             event($sendingEvent);
+            $options = $sendingEvent->options;
 
             // Check if the message was cancelled
             if ($sendingEvent->cancelled()) {
                 if (config('twilio-laravel.debug', false)) {
-                    Log::info('Twilio: Message cancelled', [
-                        'to' => $to,
-                        'reason' => $sendingEvent->cancellationReason(),
-                    ]);
+                    Log::info('Twilio: Message cancelled', ['has_reason' => $sendingEvent->cancellationReason() !== null]);
                 }
 
                 return [
@@ -110,6 +110,8 @@ class TwilioService
             // Validate and set sender
             if (! empty($options['from'])) {
                 $messageData['from'] = $options['from'];
+            } elseif (! empty($options['messagingServiceSid'])) {
+                $messageData['messagingServiceSid'] = $options['messagingServiceSid'];
             } elseif (! empty(config('twilio-laravel.messaging_service_sid'))) {
                 $messageData['messagingServiceSid'] = config('twilio-laravel.messaging_service_sid');
             } elseif (! empty(config('twilio-laravel.from'))) {
@@ -132,14 +134,17 @@ class TwilioService
 
             // Debug logging
             if (config('twilio-laravel.debug', false)) {
-                Log::debug('Twilio: Sending message', ['to' => $to, 'options' => $options]);
+                Log::debug('Twilio: Sending message', ['option_count' => count($options)]);
             }
 
             // Send the message
             $messageResponse = $this->client->messages->create($to, $messageData);
 
             // Calculate segments count (for logging/events)
-            $segmentsCount = (int) ceil(mb_strlen((string) $messageData['body']) / 153);
+            $reportedSegments = $messageResponse->numSegments;
+            $segmentsCount = is_numeric($reportedSegments) && (int) $reportedSegments > 0
+                ? (int) $reportedSegments
+                : (int) ceil(mb_strlen((string) $messageData['body']) / 153);
 
             // Fire the sent event
             event(new TwilioMessageSent(
@@ -155,8 +160,8 @@ class TwilioService
         } catch (\Exception $e) {
             if (config('twilio-laravel.debug', false)) {
                 Log::error('Twilio: Failed to send message', [
-                    'error' => $e->getMessage(),
-                    'to' => $to,
+                    'exception_category' => $e instanceof TwilioException ? 'twilio' : 'application',
+                    'error_code' => $e instanceof RestException ? $e->getCode() : null,
                 ]);
             }
             throw $e;
@@ -177,14 +182,12 @@ class TwilioService
             // Fire the sending event and allow for cancellation
             $sendingEvent = new TwilioCallSending($to, $url, $options);
             event($sendingEvent);
+            $options = $sendingEvent->options;
 
             // Check if the call was cancelled
             if ($sendingEvent->cancelled()) {
                 if (config('twilio-laravel.debug', false)) {
-                    Log::info('Twilio: Call cancelled', [
-                        'to' => $to,
-                        'reason' => $sendingEvent->cancellationReason(),
-                    ]);
+                    Log::info('Twilio: Call cancelled', ['has_reason' => $sendingEvent->cancellationReason() !== null]);
                 }
 
                 return [
@@ -230,7 +233,7 @@ class TwilioService
 
             // Debug logging
             if (config('twilio-laravel.debug', false)) {
-                Log::debug('Twilio: Making call', ['to' => $to, 'options' => $options]);
+                Log::debug('Twilio: Making call', ['option_count' => count($options)]);
             }
 
             // Make the call
@@ -259,8 +262,8 @@ class TwilioService
         } catch (\Exception $e) {
             if (config('twilio-laravel.debug', false)) {
                 Log::error('Twilio: Failed to make call', [
-                    'error' => $e->getMessage(),
-                    'to' => $to,
+                    'exception_category' => $e instanceof TwilioException ? 'twilio' : 'application',
+                    'error_code' => $e instanceof RestException ? $e->getCode() : null,
                 ]);
             }
             throw $e;
@@ -278,14 +281,12 @@ class TwilioService
         // Fire the sending event and allow for cancellation
         $sendingEvent = new TwilioMessageSending($to, $message, $options);
         event($sendingEvent);
+        $options = $sendingEvent->options;
 
         // Check if the message was cancelled
         if ($sendingEvent->cancelled()) {
             if (config('twilio-laravel.debug', false)) {
-                Log::info('Twilio: Message cancelled', [
-                    'to' => $to,
-                    'reason' => $sendingEvent->cancellationReason(),
-                ]);
+                Log::info('Twilio: Message cancelled', ['has_reason' => $sendingEvent->cancellationReason() !== null]);
             }
 
             return [
@@ -341,14 +342,12 @@ class TwilioService
         // Fire the sending event and allow for cancellation
         $sendingEvent = new TwilioCallSending($to, $url, $options);
         event($sendingEvent);
+        $options = $sendingEvent->options;
 
         // Check if the call was cancelled
         if ($sendingEvent->cancelled()) {
             if (config('twilio-laravel.debug', false)) {
-                Log::info('Twilio: Call cancelled', [
-                    'to' => $to,
-                    'reason' => $sendingEvent->cancellationReason(),
-                ]);
+                Log::info('Twilio: Call cancelled', ['has_reason' => $sendingEvent->cancellationReason() !== null]);
             }
 
             return [

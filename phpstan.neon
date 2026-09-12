@@ -11,8 +11,12 @@ parameters:
         - vendor
 
     ignoreErrors:
-        # Dynamic method calls on notifications are expected - notification classes define toTwilioSms/toTwilioCall
-        - '#Call to an undefined method Illuminate\\Notifications\\Notification::toTwilioSms\(\)#'
-        - '#Call to an undefined method Illuminate\\Notifications\\Notification::toTwilioCall\(\)#'
-        # Intentional pattern in testing fake to mark test as passed when callback matches
-        - '#Call to static method PHPUnit\\Framework\\Assert::assertTrue\(\) with true will always evaluate to true#'
+        # Laravel notifications define these methods on application subclasses.
+        -
+            message: '#Call to an undefined method Illuminate\\Notifications\\Notification::toTwilioSms\(\)#'
+            path: src/Notifications/TwilioSmsChannel.php
+            count: 1
+        -
+            message: '#Call to an undefined method Illuminate\\Notifications\\Notification::toTwilioCall\(\)#'
+            path: src/Notifications/TwilioCallChannel.php
+            count: 1

@@ -10,66 +10,86 @@ use Twilio\Security\RequestValidator;
 class VerifyTwilioWebhook
 {
     /**
-     * Handle an incoming request and validate the Twilio webhook signature.
+     * Validate a Twilio request without logging its contents.
      *
      * @return mixed
      */
     public function handle(Request $request, Closure $next)
     {
-        // Skip validation if explicitly disabled
         if (! $this->webhookValidationEnabled()) {
-            Log::info('Twilio webhook signature validation is disabled.');
+            Log::info('Twilio webhook signature validation is disabled.', ['validation_enabled' => false]);
 
             return $next($request);
         }
 
         $authToken = config('twilio-laravel.auth_token');
-
-        if (empty($authToken) || ! is_string($authToken)) {
+        if (! is_string($authToken) || empty($authToken)) {
             Log::error('Twilio auth token is not configured.');
             abort(500, 'Twilio configuration error.');
         }
 
-        // Get the validator
-        $validator = new RequestValidator($authToken);
-
-        // Get the signature from the header
         $signature = $request->header('X-Twilio-Signature');
+        $method = $request->method();
+        // Only fixed labels, booleans and measured counts reach the logger.
+        $context = [
+            'method' => in_array($method, ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'], true) ? $method : 'OTHER',
+            'route' => 'twilio-laravel.process-webhook',
+            'validation_enabled' => true,
+            'signature_present' => is_string($signature) && $signature !== '',
+            'content_length' => strlen($request->getContent()),
+        ];
 
-        if (empty($signature)) {
-            Log::warning('Missing Twilio signature header.');
+        if (! is_string($signature) || $signature === '') {
+            Log::warning('Missing Twilio signature header.', $context);
             abort(403, 'Missing Twilio signature header.');
         }
 
-        // The full URL of the request
-        $url = $request->fullUrl();
+        // fullUrl()/getQueryString() normalize query order and encoding. Twilio signs
+        // the original URL. Symfony applies the application's trusted proxy policy.
+        $url = $request->getSchemeAndHttpHost().$request->getBaseUrl().$request->getPathInfo();
+        $query = $request->server->get('QUERY_STRING');
+        if (is_string($query) && $query !== '') {
+            $url .= '?'.$query;
+        }
 
-        // For POST requests, use request parameters
         $params = $request->isMethod('post') ? $request->post() : [];
+        $body = $request->getContent();
+        if ($request->isMethod('post') && $request->getContentTypeFormat() === 'form' && $body !== '') {
+            // Global TrimStrings/ConvertEmptyStringsToNull may already have run.
+            parse_str($body, $params);
+        }
 
-        // Validate the request
-        if (! $validator->validate($signature, $url, $params)) {
-            $rawBody = $request->getContent();
-            Log::warning('Invalid Twilio webhook signature.', [
-                'url' => $url,
-                'signature' => $signature,
-                'is_valid' => false,
-                'params' => $params,
-                'headers' => $request->headers->all(),
-                'method' => $request->method(),
-                'raw_body' => $rawBody,
-                'query' => $request->query(),
-                'twilio_debug' => config('twilio-laravel.debug'),
-            ]);
+        $bodyHash = $request->query('bodySHA256');
+        $hasBodyHash = $request->query->has('bodySHA256');
+        $validInput = $hasBodyHash
+            ? is_string($bodyHash) && strlen($bodyHash) === 64 && ctype_xdigit($bodyHash)
+            : $this->validParameters($params);
 
+        $validator = new RequestValidator($authToken);
+        if (! $validInput || ! $validator->validate($signature, $url, $hasBodyHash ? $body : $params)) {
+            Log::warning('Invalid Twilio webhook signature.', $context);
             abort(403, 'Invalid Twilio webhook signature.');
         }
 
         if (config('twilio-laravel.debug')) {
-            Log::debug('Valid Twilio webhook signature.');
+            Log::debug('Valid Twilio webhook signature.', $context);
         }
 
         return $next($request);
+    }
+
+    /** @param array<array-key, mixed> $params */
+    private function validParameters(array $params): bool
+    {
+        foreach ($params as $value) {
+            foreach (is_array($value) ? $value : [$value] as $item) {
+                if (! is_scalar($item) && $item !== null) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private function webhookValidationEnabled(): bool

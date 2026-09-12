@@ -2,14 +2,12 @@
 
 namespace Citricguy\TwilioLaravel\Jobs;
 
-use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
 use Citricguy\TwilioLaravel\Services\TwilioService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class SendTwilioMessage implements ShouldQueue
 {
@@ -56,22 +54,7 @@ class SendTwilioMessage implements ShouldQueue
      */
     public function handle(TwilioService $twilioService)
     {
-        // One more chance to cancel before sending
-        $sendingEvent = new TwilioMessageSending($this->to, $this->message, $this->options);
-        event($sendingEvent);
-
-        // Check if the message was cancelled
-        if ($sendingEvent->cancelled()) {
-            if (config('twilio-laravel.debug', false)) {
-                Log::info('Twilio: Queued message cancelled', [
-                    'to' => $this->to,
-                    'reason' => $sendingEvent->cancellationReason(),
-                ]);
-            }
-
-            return;
-        }
-
+        // The service checks cancellation once for this worker attempt.
         $twilioService->sendMessageNow($this->to, $this->message, $this->options);
     }
 }

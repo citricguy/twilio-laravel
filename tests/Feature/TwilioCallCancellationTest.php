@@ -5,6 +5,7 @@ namespace Citricguy\TwilioLaravel\Tests\Feature;
 use Citricguy\TwilioLaravel\Events\TwilioCallSending;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioCall;
 use Citricguy\TwilioLaravel\Services\TwilioService;
+use Citricguy\TwilioLaravel\Tests\Support\TransportTwilioService;
 use Illuminate\Support\Facades\Event;
 use Mockery;
 
@@ -17,9 +18,7 @@ it('cancels queued calls when running through the job', function () {
         return $event->cancel('Cancelled in job handler');
     });
 
-    // Create a mock service for verification
-    $mockService = Mockery::mock(TwilioService::class);
-    $mockService->shouldReceive('makeCallNow')->never();
+    $mockService = new TransportTwilioService;
 
     app()->instance(TwilioService::class, $mockService);
 
@@ -32,15 +31,14 @@ it('cancels queued calls when running through the job', function () {
 
     // Execute the job (which should trigger the cancellation)
     $job->handle($mockService);
+    expect($mockService->transport->requests)->toBe([]);
 
-    // The test passes if mockService's makeCallNow is never called
 });
 
 it('executes call job when not cancelled', function () {
     // Configure the app to use queues
     config(['twilio-laravel.queue_messages' => true]);
 
-    // Create a mock service for verification
     $mockService = Mockery::mock(TwilioService::class);
     $mockService->shouldReceive('makeCallNow')
         ->once()
@@ -66,8 +64,7 @@ it('logs cancellation when debug is enabled', function () {
         return $event->cancel('Debug test cancellation');
     });
 
-    $mockService = Mockery::mock(TwilioService::class);
-    $mockService->shouldReceive('makeCallNow')->never();
+    $mockService = new TransportTwilioService;
 
     $job = new SendTwilioCall(
         '+1555123456',
@@ -77,4 +74,5 @@ it('logs cancellation when debug is enabled', function () {
 
     // Execute the job - should not throw
     $job->handle($mockService);
+    expect($mockService->transport->requests)->toBe([]);
 });

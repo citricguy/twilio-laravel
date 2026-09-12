@@ -7,8 +7,6 @@ use Citricguy\TwilioLaravel\Http\Middleware\VerifyTwilioWebhook;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Config;
-use Mockery;
-use Symfony\Component\HttpFoundation\HeaderBag;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 it('passes validation with valid signature', function () {
@@ -25,13 +23,7 @@ it('passes validation with valid signature', function () {
     $validSignature = WebhookSignatureHelper::generateValidSignature($url, $params, $authToken);
 
     // Create a request with this signature
-    $request = Mockery::mock(Request::class);
-    $request->shouldReceive('fullUrl')->andReturn($url);
-    $request->shouldReceive('isMethod')->with('post')->andReturn(true);
-    $request->shouldReceive('post')->andReturn($params);
-    $request->shouldReceive('header')->with('X-Twilio-Signature')->andReturn($validSignature);
-    $request->shouldReceive('getContent')->andReturn('');
-    $request->headers = new HeaderBag([]);
+    $request = Request::create($url, 'POST', $params, server: ['HTTP_X_TWILIO_SIGNATURE' => $validSignature]);
 
     // Middleware should pass this request through
     $middleware = new VerifyTwilioWebhook;
@@ -54,15 +46,7 @@ it('rejects invalid signature', function () {
     $params = ['MessageSid' => 'SM123456'];
     $invalidSignature = 'invalid_signature_value';
 
-    $request = Mockery::mock(Request::class);
-    $request->shouldReceive('fullUrl')->andReturn($url);
-    $request->shouldReceive('isMethod')->with('post')->andReturn(true);
-    $request->shouldReceive('post')->andReturn($params);
-    $request->shouldReceive('header')->with('X-Twilio-Signature')->andReturn($invalidSignature);
-    $request->shouldReceive('getContent')->andReturn('');
-    $request->shouldReceive('method')->andReturn('POST');
-    $request->shouldReceive('query')->andReturn([]);
-    $request->headers = new HeaderBag([]);
+    $request = Request::create($url, 'POST', $params, server: ['HTTP_X_TWILIO_SIGNATURE' => $invalidSignature]);
 
     // Middleware should abort with 403
     $middleware = new VerifyTwilioWebhook;

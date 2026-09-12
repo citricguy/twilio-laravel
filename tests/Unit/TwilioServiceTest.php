@@ -29,7 +29,7 @@ it('queues messages when queuing is enabled', function () {
     // Mock the Twilio client
     $mockClient = Mockery::mock(Client::class);
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Send a message
@@ -57,6 +57,7 @@ it('sends messages immediately when queuing is disabled', function () {
 
     // Create a mock MessageInstance
     $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->numSegments = null;
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
@@ -77,7 +78,7 @@ it('sends messages immediately when queuing is disabled', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Send a message
@@ -100,6 +101,7 @@ it('allows customizing the from number', function () {
 
     // Create a mock MessageInstance
     $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->numSegments = null;
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
@@ -120,7 +122,7 @@ it('allows customizing the from number', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Send a message with custom from number
@@ -169,6 +171,7 @@ it('handles MMS with media URLs', function () {
 
     // Create a mock MessageInstance
     $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->numSegments = null;
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
@@ -190,7 +193,7 @@ it('handles MMS with media URLs', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Send an MMS
@@ -207,6 +210,7 @@ it('allows setting StatusCallback URL', function () {
 
     // Create a mock MessageInstance
     $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->numSegments = null;
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
@@ -228,7 +232,7 @@ it('allows setting StatusCallback URL', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Send a message with StatusCallback
@@ -253,7 +257,7 @@ it('throws exception when no sender is configured', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Try to send a message without a from number
@@ -269,6 +273,7 @@ it('uses messaging service sid when from is not set', function () {
 
     // Create a mock MessageInstance
     $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->numSegments = null;
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
@@ -288,7 +293,7 @@ it('uses messaging service sid when from is not set', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Send a message
@@ -303,6 +308,7 @@ it('uses per-message from option over config', function () {
 
     // Create a mock MessageInstance
     $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->numSegments = null;
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
@@ -321,7 +327,7 @@ it('uses per-message from option over config', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Send a message with custom from
@@ -349,7 +355,7 @@ it('handles api exceptions and rethrows', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Try to send a message
@@ -364,6 +370,7 @@ it('uses statusCallback from metadata when not in options', function () {
 
     // Create a mock MessageInstance
     $mockMessage = Mockery::mock(MessageInstance::class);
+    $mockMessage->numSegments = null;
     $mockMessage->sid = 'SM123456';
     $mockMessage->status = 'sent';
 
@@ -382,7 +389,7 @@ it('uses statusCallback from metadata when not in options', function () {
 
     // Inject the mock client
     $reflectionProperty = new \ReflectionProperty($service, 'client');
-    $reflectionProperty->setAccessible(true);
+
     $reflectionProperty->setValue($service, $mockClient);
 
     // Send a message with statusCallback in metadata

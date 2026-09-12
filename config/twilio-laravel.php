@@ -65,7 +65,8 @@ return [
     | Debug Mode
     |--------------------------------------------------------------------------
     |
-    | When enabled, detailed logs about API calls and message/call processing will be output
+    | When enabled, safe counts, flags and error categories are logged. Payloads,
+    | addresses, credentials and provider exception messages are never dumped.
     |
     */
     'debug' => env('TWILIO_DEBUG', false),

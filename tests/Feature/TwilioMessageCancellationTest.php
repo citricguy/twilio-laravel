@@ -6,6 +6,7 @@ use Citricguy\TwilioLaravel\Events\TwilioMessageSending;
 use Citricguy\TwilioLaravel\Facades\Twilio;
 use Citricguy\TwilioLaravel\Jobs\SendTwilioMessage;
 use Citricguy\TwilioLaravel\Services\TwilioService;
+use Citricguy\TwilioLaravel\Tests\Support\TransportTwilioService;
 use Illuminate\Support\Facades\Event;
 use Mockery;
 
@@ -67,11 +68,8 @@ it('cancels queued messages when running through the job', function () {
         return $event->cancel('Cancelled in job handler');
     });
 
-    // Create a mock service for verification
-    $mockService = Mockery::mock(TwilioService::class);
-    $mockService->shouldReceive('sendMessageNow')->never();
+    $mockService = new TransportTwilioService;
 
-    // The sendMessageNow method should never be called because we cancel in the event
     app()->instance(TwilioService::class, $mockService);
 
     // Create and execute a job directly
@@ -83,7 +81,6 @@ it('cancels queued messages when running through the job', function () {
 
     // Execute the job (which should trigger the cancellation)
     $job->handle($mockService);
+    expect($mockService->transport->requests)->toBe([]);
 
-    // The test passes if mockService's sendMessageNow is never called
-    // (which is verified by shouldReceive()->never() above)
 });
